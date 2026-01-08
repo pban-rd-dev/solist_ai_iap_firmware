@@ -74,20 +74,25 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 ### Using OpenOCD
 
 ```bash
-# Flash hex file
-openocd -f openocd.cfg -c "program build/solist_ai_template.hex verify reset exit"
+# Convert hex to tcl code
+python scripts/convert_hex_to_tcl.py build/solist_ai_gcc_template.hex flash_from_hex.tcl
+
+# Start openocd
+openocd -f openocd/openocd.cfg 
+telnet localhost 4444
+```
+
+```bash
+# Connect to openocd
+telnet localhost 4444
+
+# Run the script
+$ > load flash_from_hex.tcl
 ```
 
 ### Using J-Link
 
-```bash
-JLinkExe -device ML63Q2537 -if SWD -speed 1000
-# In J-Link console:
-# connect
-# loadfile build/solist_ai_template.hex
-# r
-# g
-```
+TODO
 
 ## Hardware Information
 
