@@ -1,0 +1,6 @@
+[submodule "external/CMSIS"]
+	path = external/CMSIS
+	url = https://github.com/ARM-software/CMSIS_6.git
+[submodule "external/spi_protocol"]
+	path = external/spi_protocol
+	url = git@github.com:pban-rd-dev/solist_ai_protocol.git
