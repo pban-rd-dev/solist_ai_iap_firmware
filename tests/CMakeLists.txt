@@ -5,7 +5,6 @@ set(TEST_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test_main.c
     ${CMAKE_CURRENT_SOURCE_DIR}/test_framework.c
     ${CMAKE_CURRENT_SOURCE_DIR}/test_device.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/test_spi_hal.c
     # Add more test suite files here:
     # ${CMAKE_CURRENT_SOURCE_DIR}/test_uart.c
 )
@@ -15,7 +14,6 @@ set(TEST_APP_SOURCES
     ${CMAKE_SOURCE_DIR}/src/syscalls.c
     ${CMAKE_SOURCE_DIR}/src/app_irq.c
     ${CMAKE_SOURCE_DIR}/src/device.c
-    ${CMAKE_SOURCE_DIR}/src/spi_hal_solist_ai.c
 )
 
 # Combine all test sources
@@ -42,7 +40,6 @@ target_include_directories(${TEST_TARGET_NAME} PRIVATE
 target_link_libraries(${TEST_TARGET_NAME} PRIVATE
     driver
     utility
-    spi_protocol::core
 )
 
 # Set the linker script

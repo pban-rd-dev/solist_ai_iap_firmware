@@ -34,14 +34,8 @@ set(CMAKE_C_FLAGS_RELEASE "-Os -DNDEBUG")
 # Linker flags
 set(CMAKE_EXE_LINKER_FLAGS "${CPU_FLAGS} -specs=nano.specs -Wl,--gc-sections")
 
-# Define project specific variables
-set(SPI_PROTOCOL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/spi_protocol")
-
 # Build options
 option(BUILD_TESTS "Build test binary" OFF)
-
-# Add spi_protocol library
-add_subdirectory(${SPI_PROTOCOL_DIR} ${CMAKE_BINARY_DIR}/spi_protocol)
 
 # Add subdirectories
 add_subdirectory(driver)
@@ -71,7 +65,6 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 target_link_libraries(${PROJECT_NAME} PRIVATE
   driver
   utility
-  spi_protocol::core
 )
 
 # Set the linker script

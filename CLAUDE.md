@@ -4,205 +4,107 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Embedded firmware for ML63Q2537 (ROHM Solist-AI) MCU, implementing SPI slave communication with a custom protocol for high-performance data transfer (1.2-1.4 MB/s). This project is designed for on-device AI applications requiring large dataset transfers.
+Minimal embedded-firmware **template** for the ML63Q2537 (ROHM/Lapis "Solist-AI") MCU using CMake + arm-none-eabi-gcc. Provides toolchain setup, peripheral drivers, board utilities, startup/linker scripts, an on-target test framework, and an ML63Q2537-aware OpenOCD flash workflow. Intended as the starting point for a Solist-AI application.
 
 **Hardware:**
-- MCU: ML63Q2537 (ARM Cortex-M0+ @ 48MHz)
-- Flash: 256KB at 0x10000000
-- RAM: 16KB at 0x20000000
-- Communication: SPI slave (SSIOF0 peripheral)
+- MCU: ML63Q2537 (ARM Cortex-M0+ @ 48 MHz, PLL-driven)
+- Flash: 256 KB at `0x10000000`
+- RAM: 16 KB at `0x20000000` (linker reserves 1 KB stack, 3 KB heap)
 
-## Build Commands
+## Repository Layout
 
-### Standard Build Workflow
+```
+src/                application sources — built into solist_ai_template ELF
+  main.c, main.h        entry point
+  device.[ch]           clock + tick + WDT init, delay_us/ms
+  debug_uart.[ch]       DEBUG_DEBUG/WARN/... macros over UARTF0
+  app_irq.c             app-level IRQ handlers
+  syscalls.c            newlib stubs
+driver/             ML63Q2537 peripheral drivers, built as static lib `driver`
+utility/board/      board helpers (LEDs, periph init), static lib `utility`
+external/CMSIS/     ARM CMSIS_6 submodule (REQUIRED — see Setup)
+ml63q25x7/Source/   startup (startup_ML63Q25x7.c), system init, GCC linker script
+RTE/                Runtime Environment (system init)
+cmake/              arm-none-eabi-toolchain.cmake (auto-loaded by top-level CMakeLists)
+openocd/openocd.cfg J-Link/SWD config + full TCL flash-programming routines for ML63Q2537
+scripts/hex_to_flash.py   converts Intel HEX → TCL script of `flash_write_word` calls
+tests/              on-target test binary (test framework + suites)
+```
+
+## Setup (one-time)
+
+`external/CMSIS` is a git submodule:
 
 ```bash
-# Initial setup (one-time)
-git clone --depth 1 --branch v6.2.0 https://github.com/ARM-software/CMSIS_6.git external/CMSIS
+git submodule update --init --recursive
+```
 
-# Build
+## Build
+
+```bash
 mkdir -p build && cd build
-cmake -DCMAKE_BUILD_TYPE=Debug ..
+cmake -DCMAKE_BUILD_TYPE=Debug ..       # Debug: -O0 -g3 -DDEBUG
+# or
+cmake -DCMAKE_BUILD_TYPE=Release ..     # Release: -Os -DNDEBUG
 make -j4
 ```
 
-### Build Variants
+Add `-DBUILD_TESTS=ON` to also build the test binary.
+
+The toolchain file `cmake/arm-none-eabi-toolchain.cmake` is auto-selected by the top-level `CMakeLists.txt` if `CMAKE_TOOLCHAIN_FILE` is unset — do not pass `-DCMAKE_TOOLCHAIN_FILE=...` unless overriding intentionally.
+
+**Outputs in `build/`:**
+- `solist_ai_template` (ELF), `.hex` (Intel HEX), `.bin` (raw)
+- With `BUILD_TESTS=ON`: `solist_ai_template_test` + `.hex`/`.bin`
+
+CPU/compile flags are set centrally in the top-level `CMakeLists.txt` (`-mcpu=cortex-m0plus -mthumb -ffunction-sections -fdata-sections -Wall -Wextra`, C99, `-specs=nano.specs`, `--gc-sections`). The MCU variant macros `ML63Q2537` and `ML63Q25x7` are defined for the target.
+
+## Flashing (ML63Q2537-specific workflow)
+
+**Do not** use a stock `openocd program ... verify reset exit` invocation — the ML63Q2537 has a custom flash controller (FLASHA/FLASHD/FLASHCON/FLASHACP/FLASHSLF) that requires:
+1. System clock raised to 48 MHz PLL first.
+2. A specific accept-flag write sequence to unlock self-programming.
+3. WDT clears interleaved with long erase/write operations (WDT is always on).
+
+All of this is implemented as TCL procs in `openocd/openocd.cfg`. The supported workflow is:
 
 ```bash
-# Debug build (with symbols, -O0)
-cmake -DCMAKE_BUILD_TYPE=Debug ..
+# 1. Generate a TCL script of flash_write_word calls from the hex file
+python3 scripts/hex_to_flash.py build/solist_ai_template.hex flash_from_hex.tcl
 
-# Release build (optimized, -Os for size)
-cmake -DCMAKE_BUILD_TYPE=Release ..
+# 2. Start OpenOCD in one terminal
+openocd -f openocd/openocd.cfg
 
-# Build with tests
-cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON ..
-make -j4
+# 3. From another terminal, drive it via telnet
+telnet localhost 4444
+> prepare_flash           ;# erase + clock setup; defaults to 0x10000000, 256 KB
+> source flash_from_hex.tcl
 ```
 
-### Output Files
+Other useful TCL commands defined in `openocd.cfg`: `test_clock`, `test_flash`, `flash_program <addr> <data>`, `flash_erase_block <addr> <size>`, `program_firmware_with_erase <file>`.
 
-After build, the following files are generated in `build/`:
-- `solist_ai_template` - ELF executable (main application)
-- `solist_ai_template.hex` - Intel HEX for flashing
-- `solist_ai_template.bin` - Raw binary
-
-When built with `-DBUILD_TESTS=ON`:
-- `solist_ai_template_test` - Test binary ELF
-- `solist_ai_template_test.hex` - Test binary HEX
-- `solist_ai_template_test.bin` - Test binary
-
-## Flashing
-
-### Using OpenOCD (CMSIS-DAP)
-
-```bash
-# Flash from build directory
-cd build
-openocd -f ../openocd/openocd.cfg -c "program solist_ai_template.hex verify reset exit"
-```
-
-Alternative configurations available in `openocd/`:
-- `openocd-jlink.cfg` - For J-Link debuggers
-- `openocd-jlink-ram.cfg` - RAM-only debugging
-
-### Using J-Link
-
-```bash
-JLinkExe -device ML63Q2537 -if SWD -speed 1000
-# In J-Link console: connect, loadfile build/solist_ai_template.hex, r, g
-```
-
-## Architecture
-
-### Core Components
-
-**1. Device HAL (`src/device.h`, `src/device.c`)**
-- System initialization and clock management
-- Timing utilities: `device_delay_us()`, `device_delay_ms()`, `device_get_tick_ms()`
-- System clock query: `device_get_sysclk()`
-
-**2. SPI Protocol HAL (`src/spi_hal_solist_ai.c`)**
-- Implements HAL interface for `external/spi_protocol` library
-- SSIOF0 peripheral driver wrapper
-- Slave mode only (master mode returns error)
-- FIFO-based transmit/receive with timeout handling
-- Optional READY signal on Port 8.2 for flow control
-
-**3. Debug UART (`src/debug_uart.h`, `src/debug_uart.c`)**
-- Logging macros: `DEBUG_DEBUG()`, `DEBUG_WARN()`, etc.
-- Uses UARTF for debug output
-
-**4. Driver Layer (`driver/`)**
-- Low-level peripheral drivers for ML63Q2537
-- Key drivers: SSIOF (SPI), UARTF (UART), WDT (watchdog), timers, DMA, etc.
-- Built as static library linked to main application
-
-**5. SPI Protocol Library (`external/spi_protocol/`)**
-- Platform-agnostic SPI communication protocol
-- CRC-16 error detection, automatic retry, flow control
-- Supports large dataset transfers with auto-packetization
-- HAL abstraction layer (implemented in `src/spi_hal_solist_ai.c`)
-
-### SPI Configuration
-
-The SPI slave is configured in `src/spi_hal_solist_ai.c:130`:
-- Mode: Slave
-- Data size: 8-bit
-- Clock phase: CPHA_1SM_2SH (sample on 1st edge, shift on 2nd)
-- Clock polarity: CPOL_LOW (idle low)
-- Port: Port 4 (SSIOF0)
-- READY signal: Port 8.2 (when `SPI_USE_READY_SIGNAL` enabled)
-
-### Interrupt Handling
-
-Application-level IRQ handlers in `src/app_irq.c`.
-
-### Critical Considerations
-
-**Watchdog Timer:**
-- Always active, must call `wdt_clear()` regularly in main loop
-- Configured in `device_initialize()` with 2-second timeout
-
-**SPI Transmission:**
-- `s_spi_proto_transmit()` in `src/spi_hal_solist_ai.c:65` handles FIFO-based communication
-- Clears watchdog during long transfers
-- Uses polling (not interrupt/DMA currently)
-- Error handling for overrun and mode fault
-
-**Memory Constraints:**
-- Stack: 1KB (linker script)
-- Heap: 3KB (linker script)
-- SPI buffers: `SPI_BUFFER_SIZE = SPI_MAX_PAYLOAD_SIZE + 16`
+Note: `README.md` references `scripts/convert_hex_to_tcl.py` — that name is stale; the actual script is `scripts/hex_to_flash.py`.
 
 ## Testing
 
-### Hardware Test Binary
+Tests run **on-target** (Cortex-M0+) as a separate binary built with `-DBUILD_TESTS=ON`. There is no host-side unit test runner. `tests/test_framework.[ch]` provides minimal `TEST_ASSERT` / suite-runner macros; `tests/test_main.c` is the entry point that calls each suite's run function.
 
-A dedicated test binary (`tests/test_main.c`) runs on the ARM Cortex-M0+ hardware to verify basic functionality.
+**Adding a suite:** create `tests/test_<area>.c`, add it to `TEST_SOURCES` in `tests/CMakeLists.txt`, and call its run function from `test_main.c`.
 
-**Build test binary:**
-```bash
-mkdir -p build && cd build
-cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON ..
-make -j4
-```
+## Architecture Notes
 
-This generates `solist_ai_template_test.hex` and `solist_ai_template_test.bin` in the build directory.
+**Watchdog** — always active with a 2 s timeout (set in `device_initialize()`). Any loop that takes >2 s (long peripheral transfers, flash erase, big computations) must call `wdt_clear()` periodically, or the chip resets. The OpenOCD TCL flash routines interleave WDT clears for this reason.
 
-**Test coverage:**
-- Device initialization and system clock
-- Watchdog timer functionality
-- Timing functions (delays and tick counter)
-- Debug UART output
+**Memory budget** — Stack 1 KB, heap 3 KB (in `ml63q25x7/Source/GCC/ML63Q25x7_gcc.ld`). Total RAM is 16 KB; large static buffers eat meaningfully into it.
 
-**Adding new tests:**
-Add test functions in `tests/test_main.c` and call them from `main()`.
+## Common Modification Workflows
 
-## Development Workflow
+**Adding application source files:** drop the `.c` into `src/`, append to `APP_SOURCES` in `src/CMakeLists.txt` (note `PARENT_SCOPE`), rebuild.
 
-### Adding Source Files
+**Driver headers** live in `driver/inc/`: `ssiof0.h`, `uartf0.h`, `wdt.h`, `irq.h`, `timer0_1.h`, `dmac0.h`, etc.
 
-1. Add `.c` file to `src/`
-2. Update `src/CMakeLists.txt` to include it in `APP_SOURCES`
-3. Rebuild
+## Toolchain & Standard
 
-### Using Peripheral Drivers
-
-Include driver headers from `driver/inc/`:
-```c
-#include "ssiof0.h"    // SPI
-#include "uartf0.h"    // UART
-#include "timer0_1.h"  // Timers
-#include "dmac0.h"     // DMA
-```
-
-### Modifying SPI Protocol
-
-The SPI protocol library is in `external/spi_protocol/`. To modify:
-1. Update protocol code in `external/spi_protocol/src/`
-2. Update HAL implementation in `src/spi_hal_solist_ai.c`
-3. Configuration is in `external/spi_protocol/include/spi_config.h`
-
-Key HAL functions to implement:
-- `spi_proto_hal_init()` - Initialize SPI hardware
-- `spi_proto_hal_transmit()` - Send data
-- `spi_proto_hal_receive()` - Receive data
-- `spi_proto_hal_transfer()` - Full-duplex transfer
-
-### SPI Protocol Configuration
-
-Edit `external/spi_protocol/include/spi_config.h`:
-- `SPI_MAX_PAYLOAD_SIZE` - Packet size (256-4096 bytes)
-- `SPI_MAX_RETRIES` - Retry attempts for failed transfers
-- `SPI_TIMEOUT_MS` - Operation timeout
-- `SPI_USE_READY_SIGNAL` - Enable/disable flow control
-
-## Important Notes
-
-- All code must be compatible with C99 standard
-- The project uses ARM GCC toolchain (`arm-none-eabi-gcc`)
-- Startup code and linker script are in `ml63q25x7/Source/`
-- CMSIS headers required (must be cloned into `external/CMSIS`)
-- Current implementation in `spi_hal_solist_ai.c` has placeholder returns (`SPI_ERROR_HAL_ERROR`) after transmit/receive operations - these need to be updated when finalizing implementation
-- OpenOCD configuration may need adjustment for flash programming (currently uses `stm32f1x` driver as placeholder)
+- C99 (`-std=c99`, no GNU extensions: `CMAKE_C_EXTENSIONS OFF`).
+- `arm-none-eabi-gcc` (10.3+ tested).
+- CMake ≥ 3.16.
