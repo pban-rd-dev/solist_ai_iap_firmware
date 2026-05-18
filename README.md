@@ -30,11 +30,12 @@ Minimal CMake project template for Solist-AI (ML63Q2537) development.
 
 ## Setup
 
-### 1. Install CMSIS
+### 1. Initialize submodules
+
+CMSIS is tracked as a git submodule under `external/CMSIS`:
 
 ```bash
-# Clone CMSIS repository
-git clone --depth 1 --branch v6.2.0 https://github.com/ARM-software/CMSIS_6.git external/CMSIS
+git submodule update --init --recursive
 ```
 
 ## Build
@@ -73,21 +74,21 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 
 ### Using OpenOCD
 
-```bash
-# Convert hex to tcl code
-python scripts/convert_hex_to_tcl.py build/solist_ai_gcc_template.hex flash_from_hex.tcl
+The ML63Q2537 has a custom flash controller that requires the system clock at 48 MHz PLL and a specific accept-flag unlock sequence before any erase/write. All of that is implemented as TCL procs in `openocd/openocd.cfg`, so flashing is a three-step process:
 
-# Start openocd
-openocd -f openocd/openocd.cfg 
-telnet localhost 4444
+```bash
+# 1. Generate a TCL script of flash_write_word calls from the built hex
+python3 scripts/hex_to_flash.py build/solist_ai_template.hex flash_from_hex.tcl
+
+# 2. Start openocd in one terminal
+openocd -f openocd/openocd.cfg
 ```
 
 ```bash
-# Connect to openocd
+# 3. From another terminal, drive it via telnet
 telnet localhost 4444
-
-# Run the script
-$ > load flash_from_hex.tcl
+> prepare_flash             ;# erase + clock setup (defaults: 0x10000000, 256 KB)
+> source flash_from_hex.tcl
 ```
 
 ### Using J-Link
@@ -103,31 +104,24 @@ TODO
 
 ## Application Entry Point
 
-The template includes a minimal `main.c` with:
-- Watchdog timer initialization (2-second timeout)
-- Main loop with WDT clearing
-- Simple delay function
-
-### Minimal Example
+The template's `src/main.c` is a minimal scaffold: it calls `device_initialize()` (which configures the system clock and starts a 2-second watchdog) and then loops, clearing the watchdog. Drop your application code into the loop body.
 
 ```c
 #include <stdint.h>
 #include "ML63Q25x7.h"
 #include "wdt.h"
+#include "device.h"
 
 int main(void)
 {
-    /* Initialize watchdog timer */
-    wdt_init(WDT_2S);
-    wdt_clear();
-
-    /* Main loop */
-    while (1) {
-        wdt_clear();
-
-        /* Your application code here */
+    if (device_initialize() != 0) {
+        return -1;
     }
 
+    while (1) {
+        wdt_clear();
+        /* Your application code here */
+    }
     return 0;
 }
 ```
