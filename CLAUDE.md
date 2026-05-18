@@ -15,7 +15,7 @@ Minimal embedded-firmware **template** for the ML63Q2537 (ROHM/Lapis "Solist-AI"
 
 ```
 src/                application sources — built into solist_ai_template ELF
-  main.c, main.h        entry point
+  main.c                entry point
   device.[ch]           clock + tick + WDT init, delay_us/ms
   debug_uart.[ch]       DEBUG_DEBUG/WARN/... macros over UARTF0
   app_irq.c             app-level IRQ handlers
@@ -82,8 +82,6 @@ telnet localhost 4444
 ```
 
 Other useful TCL commands defined in `openocd.cfg`: `test_clock`, `test_flash`, `flash_program <addr> <data>`, `flash_erase_block <addr> <size>`, `program_firmware_with_erase <file>`.
-
-Note: `README.md` references `scripts/convert_hex_to_tcl.py` — that name is stale; the actual script is `scripts/hex_to_flash.py`.
 
 ## Testing
 
