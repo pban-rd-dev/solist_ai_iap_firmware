@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "debug_uart.h"
+#include "uart_print.h"
 #include "irq.h"
 #include "ssiof0.h"
 
@@ -22,7 +22,7 @@ void NMI_Handler( void )
 
 void UAF0_IRQHandler( void )
 {
-	debug_procUartfInt();
+	uart_procUartfInt();
 }
 
 void SIOF0_IRQHandler(void)

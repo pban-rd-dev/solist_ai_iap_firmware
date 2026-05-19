@@ -6,9 +6,6 @@ set(DRIVER_SOURCES
     src/ssiof0.c
     src/wdt.c
     src/uartf0.c
-    # Add other driver sources as needed
-    # Note: Some sources might be optional depending on peripheral usage
-    ../src/debug_uart.c
 )
 
 # Create driver library

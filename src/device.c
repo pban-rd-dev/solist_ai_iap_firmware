@@ -6,7 +6,7 @@
 #include "irq.h"
 #include "wdt.h"
 
-#include "debug_uart.h"
+#include "uart_print.h"
 
 extern uint32_t SystemCoreClock;
 
@@ -33,13 +33,13 @@ uint16_t device_initialize(void)
 
   smpl_enablePeripheral(USR_PERI);
 
-  debug_uart_init();
+  uart_print_init();
   return 0;
 }
 
 uint16_t device_deinitialize(void)
 {
-  debug_uart_deinit();
+  uart_print_deinit();
   return 0;
 }
 

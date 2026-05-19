@@ -37,11 +37,6 @@
 
 #include "ssiof0.h"
 
-#define DEBUG
-#ifdef DEBUG
-#include "debug_uart.h"
-#endif // DEBUG
-
 /*############################################################################*/
 /*#                                  Macro                                   #*/
 /*############################################################################*/
@@ -519,9 +514,7 @@ int32_t ssiof0_continue( void )
 	/* If communication is completed, then callback function is called. */
 	if( flgTransEnd != 0 ) {
 		clear_reg32( SSIOF0->SF0INTC, 0x0000FFFF );
-    DEBUG_DEBUG("Stopping. cleared INTC. callback = %p", s_ctrlParam.callBack);
 		if( s_ctrlParam.callBack != (void *)0 ) {
-      DEBUG_DEBUG("call callback");
 			s_ctrlParam.callBack( s_ctrlParam.cnt, s_ctrlParam.errStat );
 		}
 		ret = (int)( SSIOF_R_TRANS_FIN );

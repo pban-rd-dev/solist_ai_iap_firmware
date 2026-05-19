@@ -1,5 +1,5 @@
 /*****************************************************************************
- debug_uart.h
+ uart_print.h
 
  UART Debug Interface for ML63Q2537
  - UART0 on pins TX:P33, RX:P32
@@ -8,8 +8,8 @@
 
 ******************************************************************************/
 
-#ifndef DEBUG_UART_H__
-#define DEBUG_UART_H__
+#ifndef UART_PRINT_H__
+#define UART_PRINT_H__
 
 #include <stdint.h>
 #include <stdarg.h>
@@ -20,21 +20,21 @@
 /*############################################################################*/
 
 /* UART Configuration */
-#define DEBUG_UART_BAUD_RATE    115200  /* Debug UART baud rate */
-#define DEBUG_UART_TX_PIN       33      /* P33 for TX */
-#define DEBUG_UART_RX_PIN       32      /* P32 for RX */
+#define UART_PRINT_BAUD_RATE    115200  /* Debug UART baud rate */
+#define UART_PRINT_TX_PIN       33      /* P33 for TX */
+#define UART_PRINT_RX_PIN       32      /* P32 for RX */
 
 /* Debug levels */
-#define DEBUG_LEVEL_NONE        0
-#define DEBUG_LEVEL_ERROR       1
-#define DEBUG_LEVEL_WARNING     2
-#define DEBUG_LEVEL_INFO        3
-#define DEBUG_LEVEL_DEBUG       4
-#define DEBUG_LEVEL_VERBOSE     5
+#define UART_PRINT_LEVEL_NONE        0
+#define UART_PRINT_LEVEL_ERROR       1
+#define UART_PRINT_LEVEL_WARNING     2
+#define UART_PRINT_LEVEL_INFO        3
+#define UART_PRINT_LEVEL_DEBUG       4
+#define UART_PRINT_LEVEL_VERBOSE     5
 
 /* Default debug level */
-#ifndef DEBUG_LEVEL
-#define DEBUG_LEVEL             DEBUG_LEVEL_DEBUG
+#ifndef UART_PRINT_LEVEL
+#define UART_PRINT_LEVEL             UART_PRINT_LEVEL_DEBUG
 #endif
 
 /*############################################################################*/
@@ -48,7 +48,7 @@
  * @param       -
  * @return      true if successful, false otherwise
  */
-bool debug_uart_init(void);
+bool uart_print_init(void);
 
 /**
  * Deinitialize debug UART
@@ -56,7 +56,7 @@ bool debug_uart_init(void);
  * @param       -
  * @return      -
  */
-void debug_uart_deinit(void);
+void uart_print_deinit(void);
 
 /**
  * Send a single character
@@ -64,7 +64,7 @@ void debug_uart_deinit(void);
  * @param[in]   c       Character to send
  * @return      -
  */
-void debug_uart_putc(char c);
+void uart_print_putc(char c);
 
 /**
  * Send a string
@@ -72,7 +72,7 @@ void debug_uart_putc(char c);
  * @param[in]   str     Null-terminated string to send
  * @return      -
  */
-void debug_uart_puts(const char *str);
+void uart_print_puts(const char *str);
 
 /**
  * Send formatted string (printf-like)
@@ -81,7 +81,7 @@ void debug_uart_puts(const char *str);
  * @param[in]   ...     Variable arguments
  * @return      Number of characters sent
  */
-int debug_uart_printf(const char *format, ...);
+int uart_print_printf(const char *format, ...);
 
 /**
  * Send hex dump of data
@@ -91,7 +91,7 @@ int debug_uart_printf(const char *format, ...);
  * @param[in]   prefix  Optional prefix string
  * @return      -
  */
-void debug_uart_hex_dump(const uint8_t *data, uint32_t len, const char *prefix);
+void uart_print_hex_dump(const uint8_t *data, uint32_t len, const char *prefix);
 
 /**
  * Check if UART is ready for transmission
@@ -99,7 +99,7 @@ void debug_uart_hex_dump(const uint8_t *data, uint32_t len, const char *prefix);
  * @param       -
  * @return      true if ready, false if busy
  */
-bool debug_uart_is_ready(void);
+bool uart_print_is_ready(void);
 
 /**
  * Flush UART transmit buffer
@@ -107,7 +107,7 @@ bool debug_uart_is_ready(void);
  * @param       -
  * @return      -
  */
-void debug_uart_flush(void);
+void uart_print_flush(void);
 
 
 /**
@@ -116,58 +116,58 @@ void debug_uart_flush(void);
  * @parm        -
  * @return      -
  */
-void debug_procUartfInt( void );
+void uart_procUartfInt( void );
 
 /*############################################################################*/
 /*#                              Debug Macros                                #*/
 /*############################################################################*/
 
 /* Debug print macros with level control */
-#if DEBUG_LEVEL >= DEBUG_LEVEL_ERROR
-    #define DEBUG_ERROR(fmt, ...)   debug_uart_printf("[ERROR] " fmt "\r\n", ##__VA_ARGS__)
+#if UART_PRINT_LEVEL >= UART_PRINT_LEVEL_ERROR
+    #define UART_PRINT_ERROR(fmt, ...)   uart_print_printf("[ERROR] " fmt "\r\n", ##__VA_ARGS__)
 #else
-    #define DEBUG_ERROR(fmt, ...)   ((void)0)
+    #define UART_PRINT_ERROR(fmt, ...)   ((void)0)
 #endif
 
-#if DEBUG_LEVEL >= DEBUG_LEVEL_WARNING
-    #define DEBUG_WARN(fmt, ...)    debug_uart_printf("[WARN]  " fmt "\r\n", ##__VA_ARGS__)
+#if UART_PRINT_LEVEL >= UART_PRINT_LEVEL_WARNING
+    #define UART_PRINT_WARN(fmt, ...)    uart_print_printf("[WARN]  " fmt "\r\n", ##__VA_ARGS__)
 #else
-    #define DEBUG_WARN(fmt, ...)    ((void)0)
+    #define UART_PRINT_WARN(fmt, ...)    ((void)0)
 #endif
 
-#if DEBUG_LEVEL >= DEBUG_LEVEL_INFO
-    #define DEBUG_INFO(fmt, ...)    debug_uart_printf("[INFO]  " fmt "\r\n", ##__VA_ARGS__)
+#if UART_PRINT_LEVEL >= UART_PRINT_LEVEL_INFO
+    #define UART_PRINT_INFO(fmt, ...)    uart_print_printf("[INFO]  " fmt "\r\n", ##__VA_ARGS__)
 #else
-    #define DEBUG_INFO(fmt, ...)    ((void)0)
+    #define UART_PRINT_INFO(fmt, ...)    ((void)0)
 #endif
 
-#if DEBUG_LEVEL >= DEBUG_LEVEL_DEBUG
-    #define DEBUG_DEBUG(fmt, ...)   debug_uart_printf("[DEBUG] " fmt "\r\n", ##__VA_ARGS__)
+#if UART_PRINT_LEVEL >= UART_PRINT_LEVEL_DEBUG
+    #define UART_PRINT_DEBUG(fmt, ...)   uart_print_printf("[DEBUG] " fmt "\r\n", ##__VA_ARGS__)
 #else
-    #define DEBUG_DEBUG(fmt, ...)   ((void)0)
+    #define UART_PRINT_DEBUG(fmt, ...)   ((void)0)
 #endif
 
-#if DEBUG_LEVEL >= DEBUG_LEVEL_VERBOSE
-    #define DEBUG_VERBOSE(fmt, ...) debug_uart_printf("[VERB]  " fmt "\r\n", ##__VA_ARGS__)
+#if UART_PRINT_LEVEL >= UART_PRINT_LEVEL_VERBOSE
+    #define UART_PRINT_VERBOSE(fmt, ...) uart_print_printf("[VERB]  " fmt "\r\n", ##__VA_ARGS__)
 #else
-    #define DEBUG_VERBOSE(fmt, ...) ((void)0)
+    #define UART_PRINT_VERBOSE(fmt, ...) ((void)0)
 #endif
 
 /* Hex dump macro */
-#define DEBUG_HEX_DUMP(data, len, prefix) \
+#define UART_PRINT_HEX_DUMP(data, len, prefix) \
     do { \
-        if (DEBUG_LEVEL >= DEBUG_LEVEL_INFO) { \
-            debug_uart_hex_dump((data), (len), (prefix)); \
+        if (UART_PRINT_LEVEL >= UART_PRINT_LEVEL_INFO) { \
+            uart_print_hex_dump((data), (len), (prefix)); \
         } \
     } while(0)
 
 /* Assert macro with debug output */
-#define DEBUG_ASSERT(condition) \
+#define UART_PRINT_ASSERT(condition) \
     do { \
         if (!(condition)) { \
-            DEBUG_ERROR("ASSERT FAILED: %s at %s:%d", #condition, __FILE__, __LINE__); \
+            UART_PRINT_ERROR("ASSERT FAILED: %s at %s:%d", #condition, __FILE__, __LINE__); \
             while(1); \
         } \
     } while(0)
 
-#endif /* DEBUG_UART_H__ */
+#endif /* UART_PRINT_H__ */

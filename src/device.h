@@ -6,7 +6,7 @@
 
 /* Definitions */
 
-#define USR_PERI                    (UAF0_PERI | SIOF0_PERI)
+#define USR_PERI                    (UAF0_PERI)
 
 
 /* Functions */

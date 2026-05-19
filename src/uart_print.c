@@ -1,5 +1,5 @@
 /*****************************************************************************
- debug_uart.c
+ uart_print.c
 
  UART Debug Interface Implementation for ML63Q2537
  - Uses UARTF0 peripheral
@@ -8,7 +8,7 @@
 
 ******************************************************************************/
 
-#include "debug_uart.h"
+#include "uart_print.h"
 #include "mcu.h"
 #include "uartf0.h"
 #include "rdwr_reg.h"
@@ -105,7 +105,7 @@ static void s_hex_to_str(uint8_t value, char *str)
 /**
  * Initialize debug UART
  */
-bool debug_uart_init(void)
+bool uart_print_init(void)
 {
     if (s_uart_initialized) {
         return true;
@@ -122,9 +122,9 @@ bool debug_uart_init(void)
     irq_uaf0_ena();
     
     /* Send initialization message */
-    debug_uart_puts("\r\n=== Debug UART Initialized ===\r\n");
-    debug_uart_printf("UART0: %d baud, 8N1\r\n", DEBUG_UART_BAUD_RATE);
-    debug_uart_printf("Pins: TX=P33, RX=P32\r\n");
+    uart_print_puts("\r\n=== Debug UART Initialized ===\r\n");
+    uart_print_printf("UART0: %d baud, 8N1\r\n", UART_PRINT_BAUD_RATE);
+    uart_print_printf("Pins: TX=P33, RX=P32\r\n");
     
     return true;
 }
@@ -132,14 +132,14 @@ bool debug_uart_init(void)
 /**
  * Deinitialize debug UART
  */
-void debug_uart_deinit(void)
+void uart_print_deinit(void)
 {
     if (!s_uart_initialized) {
         return;
     }
     
     /* Wait for any pending transmission */
-    debug_uart_flush();
+    uart_print_flush();
     
     /* Reset GPIO pins to default state (GPIO input) */
     uint32_t p3mod0 = read_reg32(PORT3->P3MOD0);
@@ -159,7 +159,7 @@ void debug_uart_deinit(void)
 /**
  * Send a single character
  */
-void debug_uart_putc(char c)
+void uart_print_putc(char c)
 {
     if (!s_uart_initialized) {
         return;
@@ -177,21 +177,21 @@ void debug_uart_putc(char c)
 /**
  * Send a string
  */
-void debug_uart_puts(const char *str)
+void uart_print_puts(const char *str)
 {
     if (!s_uart_initialized || !str) {
         return;
     }
     
     while (*str) {
-        debug_uart_putc(*str++);
+        uart_print_putc(*str++);
     }
 }
 
 /**
  * Send formatted string
  */
-int debug_uart_printf(const char *format, ...)
+int uart_print_printf(const char *format, ...)
 {
     if (!s_uart_initialized || !format) {
         return 0;
@@ -212,7 +212,7 @@ int debug_uart_printf(const char *format, ...)
     s_printf_buffer[len] = '\0';
     
     /* Send formatted string */
-    debug_uart_puts(s_printf_buffer);
+    uart_print_puts(s_printf_buffer);
     
     return len;
 }
@@ -220,10 +220,10 @@ int debug_uart_printf(const char *format, ...)
 /**
  * Send hex dump of data
  */
-void debug_uart_hex_dump(const uint8_t *data, uint32_t len, const char *prefix)
+void uart_print_hex_dump(const uint8_t *data, uint32_t len, const char *prefix)
 {
     if (!s_uart_initialized || !data || len == 0) {
-      DEBUG_INFO("hex dump returns soon");
+      UART_PRINT_INFO("hex dump returns soon");
         return;
     }
     
@@ -231,34 +231,34 @@ void debug_uart_hex_dump(const uint8_t *data, uint32_t len, const char *prefix)
     uint32_t i;
     
     if (prefix) {
-        debug_uart_puts(prefix);
-        debug_uart_puts(": ");
+        uart_print_puts(prefix);
+        uart_print_puts(": ");
     }
 
     for (i = 0; i < len; i++) {
         if (i > 0 && (i % 16) == 0) {
-            debug_uart_puts("\r\n");
+            uart_print_puts("\r\n");
             if (prefix) {
-                debug_uart_puts(prefix);
-                debug_uart_puts(": ");
+                uart_print_puts(prefix);
+                uart_print_puts(": ");
             }
         } else if (i > 0 && (i % 8) == 0) {
-            debug_uart_puts("  ");
+            uart_print_puts("  ");
         } else if (i > 0) {
-            debug_uart_putc(' ');
+            uart_print_putc(' ');
         }
         
         s_hex_to_str(data[i], hex_str);
-        debug_uart_puts(hex_str);
+        uart_print_puts(hex_str);
     }
     
-    debug_uart_puts("\r\n");
+    uart_print_puts("\r\n");
 }
 
 /**
  * Check if UART is ready
  */
-bool debug_uart_is_ready(void)
+bool uart_print_is_ready(void)
 {
     if (!s_uart_initialized) {
         return false;
@@ -270,7 +270,7 @@ bool debug_uart_is_ready(void)
 /**
  * Flush UART transmit buffer
  */
-void debug_uart_flush(void)
+void uart_print_flush(void)
 {
     if (!s_uart_initialized) {
         return;
@@ -293,7 +293,7 @@ void debug_uart_flush(void)
  * @param           -
  * @return          None
  */
-void debug_procUartfInt( void )
+void uart_procUartfInt( void )
 {
 	uint32_t intStat;
 
