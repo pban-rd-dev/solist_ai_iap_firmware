@@ -27,7 +27,7 @@ DEFINE_TEST(test_device_sysclk_is_48mhz)
     TEST_ASSERT_NOT_EQUAL(0, sysclk, "System clock is non-zero");
     TEST_ASSERT_EQUAL(48000000, sysclk, "System clock is 48MHz after PLL init");
 
-    DEBUG_DEBUG("    Actual sysclk: %lu Hz", sysclk);
+    UART_PRINT_DEBUG("    Actual sysclk: %lu Hz", sysclk);
 }
 
 /**
@@ -40,7 +40,7 @@ DEFINE_TEST(test_device_get_tick_ms)
     uint32_t expected = sysclk / 1000;
 
     TEST_ASSERT_EQUAL(expected, tick, "get_tick_ms = sysclk/1000");
-    DEBUG_DEBUG("    sysclk: %lu Hz, tick_ms constant: %lu", sysclk, tick);
+    UART_PRINT_DEBUG("    sysclk: %lu Hz, tick_ms constant: %lu", sysclk, tick);
 
     /* Verify it returns the same value (it's not a counter) */
     uint32_t tick2 = device_get_tick_ms();

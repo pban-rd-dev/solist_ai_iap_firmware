@@ -14,6 +14,7 @@ set(TEST_APP_SOURCES
     ${CMAKE_SOURCE_DIR}/src/syscalls.c
     ${CMAKE_SOURCE_DIR}/src/app_irq.c
     ${CMAKE_SOURCE_DIR}/src/device.c
+    ${CMAKE_SOURCE_DIR}/src/uart_print.c
 )
 
 # Combine all test sources

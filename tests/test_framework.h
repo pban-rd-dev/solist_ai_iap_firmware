@@ -10,7 +10,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include "debug_uart.h"
+#include "uart_print.h"
 
 /* Maximum number of tests that can be registered */
 #define TEST_MAX_TESTS 64
@@ -58,10 +58,10 @@ void test_run_all(test_results_t *results);
     do { \
         if (condition) { \
             results->passed++; \
-            DEBUG_DEBUG("  [PASS] %s", description); \
+            UART_PRINT_DEBUG("  [PASS] %s", description); \
         } else { \
             results->failed++; \
-            DEBUG_WARN("  [FAIL] %s", description); \
+            UART_PRINT_WARN("  [FAIL] %s", description); \
         } \
         results->total++; \
     } while(0)
@@ -70,10 +70,10 @@ void test_run_all(test_results_t *results);
     do { \
         if ((expected) == (actual)) { \
             results->passed++; \
-            DEBUG_DEBUG("  [PASS] %s", description); \
+            UART_PRINT_DEBUG("  [PASS] %s", description); \
         } else { \
             results->failed++; \
-            DEBUG_WARN("  [FAIL] %s (expected: %lu, actual: %lu)", \
+            UART_PRINT_WARN("  [FAIL] %s (expected: %lu, actual: %lu)", \
                        description, (uint32_t)(expected), (uint32_t)(actual)); \
         } \
         results->total++; \
@@ -83,10 +83,10 @@ void test_run_all(test_results_t *results);
     do { \
         if ((expected) != (actual)) { \
             results->passed++; \
-            DEBUG_DEBUG("  [PASS] %s", description); \
+            UART_PRINT_DEBUG("  [PASS] %s", description); \
         } else { \
             results->failed++; \
-            DEBUG_WARN("  [FAIL] %s (both are: %lu)", \
+            UART_PRINT_WARN("  [FAIL] %s (both are: %lu)", \
                        description, (uint32_t)(actual)); \
         } \
         results->total++; \
@@ -96,10 +96,10 @@ void test_run_all(test_results_t *results);
     do { \
         if ((value) > (threshold)) { \
             results->passed++; \
-            DEBUG_DEBUG("  [PASS] %s", description); \
+            UART_PRINT_DEBUG("  [PASS] %s", description); \
         } else { \
             results->failed++; \
-            DEBUG_WARN("  [FAIL] %s (value: %lu, threshold: %lu)", \
+            UART_PRINT_WARN("  [FAIL] %s (value: %lu, threshold: %lu)", \
                        description, (uint32_t)(value), (uint32_t)(threshold)); \
         } \
         results->total++; \
@@ -109,10 +109,10 @@ void test_run_all(test_results_t *results);
     do { \
         if ((value) >= (min) && (value) <= (max)) { \
             results->passed++; \
-            DEBUG_DEBUG("  [PASS] %s", description); \
+            UART_PRINT_DEBUG("  [PASS] %s", description); \
         } else { \
             results->failed++; \
-            DEBUG_WARN("  [FAIL] %s (value: %lu, range: %lu-%lu)", \
+            UART_PRINT_WARN("  [FAIL] %s (value: %lu, range: %lu-%lu)", \
                        description, (uint32_t)(value), (uint32_t)(min), (uint32_t)(max)); \
         } \
         results->total++; \

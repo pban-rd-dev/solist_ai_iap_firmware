@@ -19,7 +19,7 @@ void test_register(const char *suite_name, const char *test_name, test_func_t te
                    test_setup_func_t setup, test_setup_func_t teardown)
 {
     if (g_test_registry.count >= TEST_MAX_TESTS) {
-        DEBUG_WARN("Test registry full! Cannot register: %s::%s", suite_name, test_name);
+        UART_PRINT_WARN("Test registry full! Cannot register: %s::%s", suite_name, test_name);
         return;
     }
 
@@ -40,9 +40,9 @@ void test_run_all(test_results_t *results)
 {
     const char *current_suite = NULL;
 
-    DEBUG_DEBUG("");
-    DEBUG_DEBUG("Running %lu registered tests...", g_test_registry.count);
-    DEBUG_DEBUG("");
+    UART_PRINT_DEBUG("");
+    UART_PRINT_DEBUG("Running %lu registered tests...", g_test_registry.count);
+    UART_PRINT_DEBUG("");
 
     for (uint32_t i = 0; i < g_test_registry.count; i++) {
         test_descriptor_t *test = &g_test_registry.tests[i];
@@ -50,7 +50,7 @@ void test_run_all(test_results_t *results)
         /* Print suite header when suite changes */
         if (current_suite == NULL || strcmp(current_suite, test->suite_name) != 0) {
             current_suite = test->suite_name;
-            DEBUG_DEBUG("=== %s Tests ===", current_suite);
+            UART_PRINT_DEBUG("=== %s Tests ===", current_suite);
         }
 
         /* Run setup if provided */
@@ -59,7 +59,7 @@ void test_run_all(test_results_t *results)
         }
 
         /* Run the test */
-        DEBUG_DEBUG("Running: %s", test->test_name);
+        UART_PRINT_DEBUG("Running: %s", test->test_name);
         test->test_func(results);
 
         /* Run teardown if provided */

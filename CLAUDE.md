@@ -17,7 +17,7 @@ Minimal embedded-firmware **template** for the ML63Q2537 (ROHM/Lapis "Solist-AI"
 src/                application sources — built into solist_ai_template ELF
   main.c                entry point
   device.[ch]           clock + tick + WDT init, delay_us/ms
-  debug_uart.[ch]       DEBUG_DEBUG/WARN/... macros over UARTF0
+  uart_print.[ch]       UART_PRINT_DEBUG/WARN/... macros + printf over UARTF0 @ 115200 (P32/P33)
   app_irq.c             app-level IRQ handlers
   syscalls.c            newlib stubs
 driver/             ML63Q2537 peripheral drivers, built as static lib `driver`
