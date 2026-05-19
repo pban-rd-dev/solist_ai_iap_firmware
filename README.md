@@ -2,6 +2,8 @@
 
 Minimal CMake project template for Solist-AI (ML63Q2537) development.
 
+> New here? Start with **[GETTING_STARTED.md](GETTING_STARTED.md)** — it walks through what the template provides, how to use each piece as-is, and how to modify them for your application.
+
 ## Project Structure
 
 ```
