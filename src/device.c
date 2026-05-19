@@ -6,8 +6,6 @@
 #include "irq.h"
 #include "wdt.h"
 
-#include "uart_print.h"
-
 extern uint32_t SystemCoreClock;
 
 
@@ -33,13 +31,11 @@ uint16_t device_initialize(void)
 
   smpl_enablePeripheral(USR_PERI);
 
-  uart_print_init();
   return 0;
 }
 
 uint16_t device_deinitialize(void)
 {
-  uart_print_deinit();
   return 0;
 }
 
