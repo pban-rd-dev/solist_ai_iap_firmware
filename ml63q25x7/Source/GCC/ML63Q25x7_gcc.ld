@@ -44,6 +44,8 @@ __REMAP_SIZE = 0x0003FFC0;
   -----------------------------------------------------------------------------*/
 __FLASH_BASE = 0x10000000;
 __FLASH_SIZE = 0x0003FFC0;
+__FLASH3_BASE = 0x1003FFC0;
+__FLASH3_SIZE = 0x00000040;
 
 /*--------------------- Embedded RAM Configuration ----------------------------
   <h> RAM Configuration
@@ -71,6 +73,7 @@ MEMORY
 {
   REMAP (rx)  : ORIGIN = __REMAP_BASE, LENGTH = __REMAP_SIZE
   FLASH (rx)  : ORIGIN = __FLASH_BASE, LENGTH = __FLASH_SIZE
+  FLASH3 (rx) : ORIGIN = __FLASH3_BASE, LENGTH = __FLASH3_SIZE
   RAM   (rwx) : ORIGIN = __RAM_BASE, LENGTH = __RAM_SIZE
 }
 
@@ -108,6 +111,11 @@ ENTRY(Reset_Handler)
 
 SECTIONS
 {
+  .codeoption :
+  {
+    KEEP(*(.codeoption))
+  } > FLASH3
+
   .text :
   {
     KEEP(*(.vectors))
@@ -138,7 +146,7 @@ SECTIONS
   /*
    * SG veneers:
    * All SG veneers are placed in the special output section .gnu.sgstubs. Its start address
-   * must be set, either with the command line option ÅE-section-startÅEor in a linker script,
+   * must be set, either with the command line option ÔøΩE-section-startÔøΩEor in a linker script,
    * to indicate where to place these veneers in memory.
    */
 /*
