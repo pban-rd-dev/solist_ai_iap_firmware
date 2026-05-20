@@ -142,6 +142,11 @@ static int write_verify( uint32_t *WriteAddr, uint8_t *WriteData )
         return M_NG;
     }
 
+    /* flash_open / flash_controlSelfProg / flash_close manage driver state and
+     * the FLASHSLF register; they are not per-word HW requirements. The per-word
+     * HW unlock is the FLASHACP accept sequence, emitted by
+     * flash_writeProgramMemory itself. Hoisting open/close out of the inner loop
+     * removes ~3x register accesses per word. */
     if ( ((*WriteAddr) % FLASH_SECTOR_SIZE) == 0 ) {
         flash_open();
         flash_controlSelfProg( flash_getFselfEn() );
@@ -153,26 +158,28 @@ static int write_verify( uint32_t *WriteAddr, uint8_t *WriteData )
         flash_close();
     }
 
+    flash_open();
+    flash_controlSelfProg( flash_getFselfEn() );
+
     for ( write_cnt = 0; write_cnt < XMODEM_DATA_SIZE; write_cnt += 4 ) {
         writeData  =  (uint32_t)*(WriteData + write_cnt)     & 0x000000FFU;
         writeData |= ((uint32_t)*(WriteData + write_cnt + 1) <<  8);
         writeData |= ((uint32_t)*(WriteData + write_cnt + 2) << 16);
         writeData |= ((uint32_t)*(WriteData + write_cnt + 3) << 24);
 
-        flash_open();
-        flash_controlSelfProg( flash_getFselfEn() );
-
         flash_writeProgramMemory( (void *)(*WriteAddr), writeData, flash_getFacp1(), flash_getFacp2() );
         while ( flash_checkFlashAccess() != FLASH_MEMORY_ACCESSIBLE ) {}
 
-        flash_controlSelfProg( flash_getFselfDis() );
-        flash_close();
-
         if ( *((uint32_t *)(*WriteAddr)) != writeData ) {
+            flash_controlSelfProg( flash_getFselfDis() );
+            flash_close();
             return M_NG;
         }
         *WriteAddr += 4;
     }
+
+    flash_controlSelfProg( flash_getFselfDis() );
+    flash_close();
 
     return M_OK;
 }
