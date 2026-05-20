@@ -64,6 +64,11 @@ def emit_writes(out, base_addr, words, label):
         if (i + 1) % 256 == 0:
             out.write("    wdt_clear\n")
             out.write(f'    echo "  {label}: {i + 1} / {len(words)} words"\n')
+    # Always wdt_clear at the end of a phase. Without this, the last
+    # (len(words) % 256) words of one phase plus the first ~256 words of the
+    # next phase run with no WDT clear in between — long enough to risk a
+    # 2 s timeout reset during the iap_data -> iap_code transition.
+    out.write("    wdt_clear\n")
     out.write("\n")
 
 
