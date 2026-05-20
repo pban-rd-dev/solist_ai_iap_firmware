@@ -1,9 +1,18 @@
 /*****************************************************************************
  * @file    xmodem.h
- * @brief   XMODEM-CRC state machine
+ * @brief   XMODEM-CRC / XMODEM-1K state machine (dual-size)
  *
- * Ported from ROHM ML63Q2500 reference software (IAPSample).
- * 128-byte data blocks, CRC-16 (poly 0x1021), 10 retries, 10 s timeout.
+ * Ported from ROHM ML63Q2500 reference software (IAPSample). Accepts both
+ * 1024-byte (STX, XMODEM-1K) and 128-byte (SOH, XMODEM-CRC) blocks from the
+ * sender, deciding per block based on the header byte. This is necessary
+ * because `sx --1k` ends a transfer with one or more 128-byte SOH blocks
+ * when the file size is not a multiple of 1024 — rejecting SOH causes the
+ * final block to fail with "incomplete".
+ *
+ * The receive buffer is always sized for the worst case (1029 bytes). The
+ * per-byte callback latches the actual block size from the header and tells
+ * the UART driver to stop early when an SOH block ends at byte 133.
+ * CRC-16 (poly 0x1021), 10 retries, 10 s timeout.
  *****************************************************************************/
 
 #ifndef XMODEM_H__
@@ -25,12 +34,16 @@
 #define NAK                 (0x15)
 #define CAN                 (0x18)
 
-#define XMODEM_DATA_SIZE    (128)
-#define XMODEM_BLOCK_SIZE   (133)
+#define XMODEM_DATA_SIZE    (1024)
+#define XMODEM_BLOCK_SIZE   (XMODEM_DATA_SIZE + 5)   /* hdr + blk# + ~blk# + data + CRC16 */
 
-void    Xmodem_Init( uint8_t *RecvBuf );
-void    Xmodem_SendByte( uint8_t send_data );
-uint8_t Xmodem_ReadStatus( void );
-void    Xmodem_CountTimeOut( void );
+void     Xmodem_Init( uint8_t *RecvBuf );
+void     Xmodem_SendByte( uint8_t send_data );
+uint8_t  Xmodem_ReadStatus( void );
+void     Xmodem_CountTimeOut( void );
+
+/* Data-bytes (128 or 1024) of the last accepted block. Read by main after
+ * RECV_END so write_verify knows how many bytes to flush to flash. */
+uint16_t Xmodem_GetLastDataSize( void );
 
 #endif /* XMODEM_H__ */

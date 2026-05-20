@@ -23,10 +23,17 @@ static uint16_t XmodemTimeoutRetryCnt;
 
 static uint8_t *XmodemBuf;
 
+/* Per-block state for the dual-size receive path. Reset on init and on every
+ * block boundary (success or error). Actual received-byte count comes from
+ * the UART driver via uartf0_getReadCount() — the per-byte callback fires
+ * once per IRQ (not once per byte), so we cannot count it ourselves. */
+static uint16_t s_block_size = 0;       /* total bytes in current block: 133 (SOH) or 1029 (STX) */
+static uint16_t s_last_data_size = 0;   /* data bytes (128 or 1024) of last block, for main */
+
 #define TIMEOUT_CNT     (1280)    /* 128 Hz tick * 1280 = 10 s */
 #define RETRY_CNT       (10)
 
-static int32_t Xmodem_CheckBlockData( uint8_t *RecvData, uint8_t block_num );
+static int32_t Xmodem_CheckBlockData( uint8_t *RecvData, uint8_t block_num, uint16_t data_size );
 static void    Xmodem_StartTimeOut( void );
 static void    Xmodem_StopTimeOut( void );
 static void    Xmodem_SendByteComplete( uint32_t size, uint16_t errStat );
@@ -43,26 +50,30 @@ void Xmodem_Init( uint8_t *RecvBuf )
     XmodemSendData = 0U;
     XmodemTimeoutCnt = 0U;
     XmodemTimeoutRetryCnt = 0U;
+    s_block_size = 0;
+    s_last_data_size = 0;
 }
 
-static int32_t Xmodem_CheckBlockData( uint8_t *RecvData, uint8_t BlockNum )
+uint16_t Xmodem_GetLastDataSize( void )
+{
+    return s_last_data_size;
+}
+
+static int32_t Xmodem_CheckBlockData( uint8_t *RecvData, uint8_t BlockNum, uint16_t data_size )
 {
     uint16_t crc;
-    uint8_t  loopcnt;
-    uint16_t data;
+    uint16_t loopcnt;
     uint16_t tmp;
 
     if ( RecvData[0] + RecvData[1] != 0xff ) {
         return -1;
     }
     crc = 0;
-    for ( loopcnt = 0; loopcnt < XMODEM_DATA_SIZE; loopcnt++ ) {
-        data = (uint16_t)(RecvData[loopcnt + 2]);
-        crc = UpdCRC16( data, crc );
+    for ( loopcnt = 0; loopcnt < data_size; loopcnt++ ) {
+        crc = UpdCRC16( (uint16_t)RecvData[loopcnt + 2], crc );
     }
-    tmp = RecvData[loopcnt + 2];
-    tmp = tmp << 8;
-    tmp |= RecvData[loopcnt + 3];
+    tmp  = (uint16_t)RecvData[data_size + 2] << 8;
+    tmp |= (uint16_t)RecvData[data_size + 3];
     if ( crc != tmp ) {
         return -1;
     }
@@ -126,64 +137,92 @@ void Xmodem_SendByte( uint8_t send_data )
     irq_uaf0_ena();
 }
 
+/* Dead in the new flow — Xmodem_RecvChar returns UART_R_STOP at the end of
+ * every block, which prevents the driver from invoking this complete
+ * callback. Kept as a no-op so the uartf0_read call site doesn't need to
+ * special-case a NULL pointer. */
 static void Xmodem_RecvBlockComplete( uint32_t Size, uint16_t ErrStat )
 {
     (void)Size;
-
-    Xmodem_StopTimeOut();
-
-    if ( ErrStat != 0 ) {
-        Xmodem_RetryProc();
-    } else {
-        if ( Xmodem_CheckBlockData( XmodemBuf + 1, XmodemBlockNum ) != 0 ) {
-            XmodemRetryCnt++;
-            if ( XmodemRetryCnt > RETRY_CNT ) {
-                Xmodem_SendByte( CAN );
-            } else {
-                if ( XmodemBlockNum == 1 ) {
-                    Xmodem_SendByte( 'C' );
-                } else {
-                    Xmodem_SendByte( NAK );
-                }
-            }
-        } else {
-            XmodemStatus = RECV_END;
-            XmodemBlockNum++;
-            XmodemRetryCnt = 0;
-        }
-    }
+    (void)ErrStat;
 }
 
+/* Per-IRQ receive callback (the UART driver fires this once per IRQ, not
+ * once per byte). On the first IRQ of a new block, XmodemBuf[0] holds the
+ * header byte — we use it to decide whether the block is SOH (133 bytes)
+ * or STX (1029 bytes). On subsequent IRQs we compare uartf0_getReadCount()
+ * against the chosen block size; when reached, we validate and respond
+ * inline and return UART_R_STOP so the driver tears down the read. */
 static int8_t Xmodem_RecvChar( uint8_t Data, uint16_t ErrStat )
 {
+    uint32_t cnt;
+
     (void)Data;
 
     XmodemTimeoutCnt = 0;
     XmodemTimeoutRetryCnt = 0;
+
     if ( ErrStat != 0 ) {
+        s_block_size = 0;
+        Xmodem_StopTimeOut();
         Xmodem_RetryProc();
-    } else {
+        return UART_R_STOP;
+    }
+
+    if ( s_block_size == 0 ) {
+        /* First IRQ of this block — header has just arrived in XmodemBuf[0]. */
         switch ( XmodemBuf[0] ) {
         case EOT:
             XmodemStatus = RECV_EOT;
             Xmodem_SendByte( ACK );
             XmodemRetryCnt = 0;
-            break;
-        case STX:
-            irq_uaf0_dis();
-            Xmodem_SendByte( CAN );
+            return UART_R_STOP;
+        case SOH:
+            s_block_size = 5 + 128;     /* hdr + blk# + ~blk# + 128 data + CRC16 */
             XmodemRetryCnt = 0;
             break;
-        case SOH:
+        case STX:
+            s_block_size = 5 + 1024;    /* hdr + blk# + ~blk# + 1024 data + CRC16 */
             XmodemRetryCnt = 0;
             break;
         default:
+            irq_uaf0_dis();
             Xmodem_SendByte( CAN );
             Xmodem_RetryProc();
-            break;
+            return UART_R_STOP;
         }
     }
-    return 0;
+
+    cnt = uartf0_getReadCount();
+    if ( cnt < s_block_size ) {
+        return 0;       /* more IRQs / bytes to come */
+    }
+
+    /* Block complete — validate and respond inline. */
+    uint16_t data_size = (uint16_t)(s_block_size - 5);
+    s_block_size = 0;
+
+    Xmodem_StopTimeOut();
+
+    if ( Xmodem_CheckBlockData( XmodemBuf + 1, XmodemBlockNum, data_size ) != 0 ) {
+        XmodemRetryCnt++;
+        if ( XmodemRetryCnt > RETRY_CNT ) {
+            Xmodem_SendByte( CAN );
+        } else {
+            if ( XmodemBlockNum == 1 ) {
+                Xmodem_SendByte( 'C' );
+            } else {
+                Xmodem_SendByte( NAK );
+            }
+        }
+    } else {
+        s_last_data_size = data_size;
+        XmodemStatus = RECV_END;
+        XmodemBlockNum++;
+        XmodemRetryCnt = 0;
+    }
+
+    return UART_R_STOP;
 }
 
 uint8_t Xmodem_ReadStatus( void )

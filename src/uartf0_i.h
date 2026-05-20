@@ -32,9 +32,15 @@ void    uartf0_read( uint8_t *data, uint32_t size, cbfUartFByte_t func1Byte, cbf
 #else
 void    uartf0_read( uint8_t *data, uint32_t size, cbfUartF_t func );
 #endif
-int32_t uartf0_continueWrite( uint16_t intStatus );
-int32_t uartf0_continueRead( void );
-void    uartf0_stopWrite( void );
-void    uartf0_stopRead( void );
+int32_t  uartf0_continueWrite( uint16_t intStatus );
+int32_t  uartf0_continueRead( void );
+void     uartf0_stopWrite( void );
+void     uartf0_stopRead( void );
+
+/* Bytes received in the current uartf0_read() session. Reset to 0 on every
+ * uartf0_read() call. Callers that need to act on a byte-count boundary
+ * (e.g. variable-size XMODEM blocks) must use this rather than counting
+ * per-byte callback invocations, which fire once per IRQ — not once per byte. */
+uint32_t uartf0_getReadCount( void );
 
 #endif /* UARTF0_I_H__ */

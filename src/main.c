@@ -54,7 +54,7 @@ static const uint8_t msgError[]   = { '\r', '\n', 'E', 'r', 'r', 'o', 'r', '\r',
 
 static void s_initIap( void );
 static void s_procUartfWrite( uint32_t size, uint16_t errStatus );
-static int  write_verify( uint32_t *WriteAddr, uint8_t *WriteData );
+static int  write_verify( uint32_t *WriteAddr, uint8_t *WriteData, uint16_t data_size );
 static void error_proc( void );
 static void s_loadRemapEnd( void );
 
@@ -129,16 +129,17 @@ static void error_proc( void )
     }
 }
 
-/* Write XMODEM_DATA_SIZE bytes starting at *WriteAddr.
- * Erases a 2 KB sector at the boundary, then writes 32-bit words. Verifies
- * each word against memory after write. Refuses to write past the IAP code
- * area (>= ISP_AREA2_START_ADDR) to protect the bootloader itself. */
-static int write_verify( uint32_t *WriteAddr, uint8_t *WriteData )
+/* Write `data_size` bytes (128 for SOH blocks, 1024 for STX blocks) starting
+ * at *WriteAddr. Erases a 2 KB sector at the boundary, then writes 32-bit
+ * words. Verifies each word against memory after write. Refuses to write
+ * past the IAP code area (>= ISP_AREA2_START_ADDR) to protect the bootloader
+ * itself. */
+static int write_verify( uint32_t *WriteAddr, uint8_t *WriteData, uint16_t data_size )
 {
     uint16_t write_cnt;
     uint32_t writeData;
 
-    if ( (*WriteAddr + XMODEM_DATA_SIZE - 1) >= ISP_AREA2_START_ADDR ) {
+    if ( (*WriteAddr + data_size - 1) >= ISP_AREA2_START_ADDR ) {
         return M_NG;
     }
 
@@ -161,7 +162,7 @@ static int write_verify( uint32_t *WriteAddr, uint8_t *WriteData )
     flash_open();
     flash_controlSelfProg( flash_getFselfEn() );
 
-    for ( write_cnt = 0; write_cnt < XMODEM_DATA_SIZE; write_cnt += 4 ) {
+    for ( write_cnt = 0; write_cnt < data_size; write_cnt += 4 ) {
         writeData  =  (uint32_t)*(WriteData + write_cnt)     & 0x000000FFU;
         writeData |= ((uint32_t)*(WriteData + write_cnt + 1) <<  8);
         writeData |= ((uint32_t)*(WriteData + write_cnt + 2) << 16);
@@ -214,7 +215,7 @@ int main( void )
 
         switch ( Xmodem_ReadStatus() ) {
         case RECV_END:
-            if ( write_verify( &write_addr, XmodemBuf + 3 ) != M_OK ) {
+            if ( write_verify( &write_addr, XmodemBuf + 3, Xmodem_GetLastDataSize() ) != M_OK ) {
                 error_proc();   /* never returns */
             } else {
                 Xmodem_SendByte( ACK );

@@ -188,6 +188,11 @@ void uartf0_stopWrite( void )
     s_writeCtrlParam.errStat  = 0;
 }
 
+uint32_t uartf0_getReadCount( void )
+{
+    return s_readCtrlParam.cnt;
+}
+
 void uartf0_stopRead( void )
 {
     clear_reg32( UARTF0->UAF0IER, (UARTF_ERBFI_ENA | UARTF_ELSI_ENA) );
