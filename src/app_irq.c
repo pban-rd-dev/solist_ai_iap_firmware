@@ -7,6 +7,7 @@
 #include "uartf0_i.h"
 #include "tbc.h"
 #include "xmodem.h"
+#include "debug_log.h"
 
 void EXI_IRQHandler( void );
 void NMI_Handler( void );
@@ -41,6 +42,7 @@ void UAF0_IRQHandler( void )
 
 void LTBC_IRQHandler( void )
 {
+    g_dbg_tick++;
     Xmodem_CountTimeOut();
     tbc_clearIntStat( TBC_INTST_LTBINT0 );
 }

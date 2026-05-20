@@ -13,6 +13,7 @@
 #include "xmodem_crc.h"
 #include "xmodem.h"
 #include "main.h"
+#include "debug_log.h"
 
 static uint8_t  XmodemStatus;
 static uint8_t  XmodemRetryCnt;
@@ -133,6 +134,15 @@ void Xmodem_SendByte( uint8_t send_data )
             XmodemStatus = RECV_STATE;
         }
     }
+
+    switch ( send_data ) {
+    case 'C': dbg_log_evt( DBG_EVT_C_SENT,   XmodemBlockNum, 0 ); break;
+    case ACK: dbg_log_evt( DBG_EVT_ACK_SENT, XmodemBlockNum, 0 ); break;
+    case NAK: dbg_log_evt( DBG_EVT_NAK_SENT, XmodemBlockNum, 0 ); break;
+    case CAN: dbg_log_evt( DBG_EVT_CAN_SENT, XmodemBlockNum, 0 ); break;
+    default:  break;
+    }
+
     uartf0_write( &XmodemSendData, 1, Xmodem_SendByteComplete );
     irq_uaf0_ena();
 }
@@ -173,16 +183,19 @@ static int8_t Xmodem_RecvChar( uint8_t Data, uint16_t ErrStat )
         /* First IRQ of this block — header has just arrived in XmodemBuf[0]. */
         switch ( XmodemBuf[0] ) {
         case EOT:
+            dbg_log_evt( DBG_EVT_EOT_RX, XmodemBlockNum, 0 );
             XmodemStatus = RECV_EOT;
             Xmodem_SendByte( ACK );
             XmodemRetryCnt = 0;
             return UART_R_STOP;
         case SOH:
-            s_block_size = 5 + 128;     /* hdr + blk# + ~blk# + 128 data + CRC16 */
+            dbg_log_evt( DBG_EVT_HDR_SOH, XmodemBlockNum, 0 );
+            s_block_size = 5 + 128;
             XmodemRetryCnt = 0;
             break;
         case STX:
-            s_block_size = 5 + 1024;    /* hdr + blk# + ~blk# + 1024 data + CRC16 */
+            dbg_log_evt( DBG_EVT_HDR_STX, XmodemBlockNum, 0 );
+            s_block_size = 5 + 1024;
             XmodemRetryCnt = 0;
             break;
         default:
@@ -202,9 +215,12 @@ static int8_t Xmodem_RecvChar( uint8_t Data, uint16_t ErrStat )
     uint16_t data_size = (uint16_t)(s_block_size - 5);
     s_block_size = 0;
 
+    dbg_log_evt( DBG_EVT_BLOCK_RX_DONE, XmodemBlockNum, data_size );
+
     Xmodem_StopTimeOut();
 
     if ( Xmodem_CheckBlockData( XmodemBuf + 1, XmodemBlockNum, data_size ) != 0 ) {
+        dbg_log_evt( DBG_EVT_CRC_FAIL, XmodemBlockNum, 0 );
         XmodemRetryCnt++;
         if ( XmodemRetryCnt > RETRY_CNT ) {
             Xmodem_SendByte( CAN );
@@ -216,6 +232,7 @@ static int8_t Xmodem_RecvChar( uint8_t Data, uint16_t ErrStat )
             }
         }
     } else {
+        dbg_log_evt( DBG_EVT_BLOCK_OK, XmodemBlockNum, 0 );
         s_last_data_size = data_size;
         XmodemStatus = RECV_END;
         XmodemBlockNum++;

@@ -10,5 +10,6 @@ set(APP_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/xmodem.c
   ${CMAKE_CURRENT_SOURCE_DIR}/xmodem_crc.c
   ${CMAKE_CURRENT_SOURCE_DIR}/remap_end.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/debug_log.c
   PARENT_SCOPE
 )

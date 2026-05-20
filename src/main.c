@@ -27,6 +27,7 @@
 #include "uartf0_i.h"
 #include "xmodem.h"
 #include "main.h"
+#include "debug_log.h"
 
 #define UARTF_PARAM_MODE        ( UARTF_LG_8BIT | UARTF_STP_1BIT | UARTF_PT_NON | \
                                   UARTF_BC_DIS  | UARTF_DLAB_RBR_THR | \
@@ -88,6 +89,10 @@ static void s_procUartfWrite( uint32_t size, uint16_t errStatus )
  * UART driver, LED, and interrupts. */
 static void s_initIap( void )
 {
+    /* dbg_log_init() not called here — crt0 already zeroes the .bss-resident
+     * log state, and we want zero debug_log calls on the pre-banner path
+     * while diagnosing the no-boot issue. */
+
     __disable_irq();
     irq_uaf0_dis();
 
@@ -149,6 +154,7 @@ static int write_verify( uint32_t *WriteAddr, uint8_t *WriteData, uint16_t data_
      * flash_writeProgramMemory itself. Hoisting open/close out of the inner loop
      * removes ~3x register accesses per word. */
     if ( ((*WriteAddr) % FLASH_SECTOR_SIZE) == 0 ) {
+        dbg_log_evt( DBG_EVT_ERASE_BEGIN, 0, *WriteAddr );
         flash_open();
         flash_controlSelfProg( flash_getFselfEn() );
 
@@ -157,8 +163,10 @@ static int write_verify( uint32_t *WriteAddr, uint8_t *WriteData, uint16_t data_
 
         flash_controlSelfProg( flash_getFselfDis() );
         flash_close();
+        dbg_log_evt( DBG_EVT_ERASE_END, 0, *WriteAddr );
     }
 
+    dbg_log_evt( DBG_EVT_WRITE_BEGIN, data_size, *WriteAddr );
     flash_open();
     flash_controlSelfProg( flash_getFselfEn() );
 
@@ -172,6 +180,7 @@ static int write_verify( uint32_t *WriteAddr, uint8_t *WriteData, uint16_t data_
         while ( flash_checkFlashAccess() != FLASH_MEMORY_ACCESSIBLE ) {}
 
         if ( *((uint32_t *)(*WriteAddr)) != writeData ) {
+            dbg_log_evt( DBG_EVT_VERIFY_FAIL, 0, *WriteAddr );
             flash_controlSelfProg( flash_getFselfDis() );
             flash_close();
             return M_NG;
@@ -181,6 +190,7 @@ static int write_verify( uint32_t *WriteAddr, uint8_t *WriteData, uint16_t data_
 
     flash_controlSelfProg( flash_getFselfDis() );
     flash_close();
+    dbg_log_evt( DBG_EVT_WRITE_END, data_size, *WriteAddr );
 
     return M_OK;
 }
