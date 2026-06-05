@@ -1,40 +1,49 @@
-# Solist-AI ML63Q2537 Project Template
+# Solist-AI IAP Firmware (ML63Q2537)
 
-Minimal CMake project template for Solist-AI (ML63Q2537) development.
+Pre-installed In-Application Programming (IAP) firmware for ML63Q2537-based Solist-AI customer devices. Factory-flashed into the top 32 KB of internal flash, it accepts a user-firmware image over UART (XMODEM-CRC), programs it into the user-firmware region, then remaps and resets to boot the new image.
 
-> New here? Start with **[GETTING_STARTED.md](GETTING_STARTED.md)** — it walks through what the template provides, how to use each piece as-is, and how to modify them for your application.
+This is the firmware that ships on the device. End-user applications are linked separately and delivered through the IAP update flow described below.
 
-## Project Structure
+## What this firmware does
 
-```
-.
-├── cmake/                      # CMake toolchain configuration
-├── driver/                     # Hardware driver library
-│   ├── inc/                    # Driver headers
-│   └── src/                    # Driver implementations
-├── utility/                    # Board support utilities
-│   └── board/                  # Board-specific functions
-├── src/                        # Application source code
-│   └── main.c                  # Application entry point
-├── ml63q25x7/                  # MCU-specific files
-│   ├── Source/                 # Startup code and linker script
-│   └── include/                # CMSIS device headers
-└── RTE/                        # Runtime Environment
-    └── Device/ML63Q25x7/       # System initialization
+On reset the IAP:
 
-```
+1. Configures the system clock to 48 MHz PLL and starts the watchdog (2 s timeout).
+2. Brings up UARTF0 on **P32 (RX) / P33 (TX) @ 115200 8N1**.
+3. Waits for an XMODEM-CRC transfer of a user-firmware image.
+4. Programs the received image into the user-firmware area (`0x10000000`–`0x1003BFFF`) word-by-word, clearing the watchdog at phase boundaries.
+5. Executes the flash-remap sequence from RAM and triggers a reset so the new user firmware boots on the next cycle.
+
+Errors during reception or programming emit an `Error` string on UARTF0 and abort the transfer; the device remains in the IAP and can be retried.
+
+## Hardware
+
+- **MCU:** ML63Q2537 (ROHM/Lapis "Solist-AI"), ARM Cortex-M0+ @ 48 MHz (PLL)
+- **Flash:** 256 KB at `0x10000000`
+- **RAM:** 16 KB at `0x20000000` (linker reserves 1 KB stack, 3 KB heap)
+- **Update transport:** UARTF0 on P32/P33, 115200 8N1 (caps at 115200 — hard MCU limit)
+
+## Flash memory map
+
+| Region   | Range                       | Contents                                                       |
+| -------- | --------------------------- | -------------------------------------------------------------- |
+| User     | `0x10000000` – `0x1003BFFF` | End-user application (programmed via XMODEM by the IAP)        |
+| FLASH2   | `0x1003C000` – `0x1003DFFF` | IAP `.iap2` + `.remap_end` LMA + `.data` LMA (`iap_data.bin`)  |
+| FLASH    | `0x1003E000` – `0x1003FFBF` | IAP `.text` + ARM.exidx + tables (`iap_code.bin`)              |
+| FLASH3   | `0x1003FFC0` – `0x1003FFFF` | Code option (`iap_codeoption.bin`)                             |
+
+User-firmware images delivered through the IAP must therefore be linked to start at `0x10000000` and fit within the user region.
 
 ## Prerequisites
 
-- **ARM GCC Toolchain**: `arm-none-eabi-gcc` (tested with version 10.3 or later)
-- **CMake**: 3.16 or higher
-- **CMSIS**: ARM Cortex Microcontroller Software Interface Standard
+- `arm-none-eabi-gcc` 10.3+ (tested with 14.3)
+- CMake ≥ 3.16
+- Python 3 (for `scripts/iap_flash.py`)
+- OpenOCD with a J-Link or CMSIS-DAP probe (for the factory flash step)
 
-## Setup
+## Setup (one-time)
 
-### 1. Initialize submodules
-
-CMSIS is tracked as a git submodule under `external/CMSIS`:
+CMSIS is tracked as a git submodule:
 
 ```bash
 git submodule update --init --recursive
@@ -42,157 +51,81 @@ git submodule update --init --recursive
 
 ## Build
 
-### Basic Build
-
 ```bash
-# Create build directory
-mkdir build && cd build
-
-# Configure project
-cmake -DCMAKE_BUILD_TYPE=Debug ..
-
-# Build
+mkdir -p build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..   # Release: -Os -DNDEBUG  (use Debug for -O0 -g3)
 make -j4
 ```
 
-### Output Files
+Add `-DBUILD_IAP_TESTS=ON` to also build the on-target test binary under `tests_iap/`.
 
-After successful build, you will find:
-- `solist_ai_template` - ELF executable
-- `solist_ai_template.hex` - Intel HEX format (for flashing)
-- `solist_ai_template.bin` - Raw binary format
+Outputs in `build/`:
 
-### Build Types
+- `solist_ai_template_iap` — ELF
+- `solist_ai_template_iap.hex` — full Intel HEX (for inspection)
+- `iap_code.bin` — section image for `0x1003E000`
+- `iap_data.bin` — section image for `0x1003C000`
+- `iap_codeoption.bin` — section image for `0x1003FFC0`
 
-```bash
-# Debug build (with symbols, -O0)
-cmake -DCMAKE_BUILD_TYPE=Debug ..
+The whole-image `.hex` is **not** what gets programmed in production — the IAP is split across three non-contiguous flash regions, so the three `.bin` images are flashed at their distinct base addresses via the script below.
 
-# Release build (optimized, -Os)
-cmake -DCMAKE_BUILD_TYPE=Release ..
-```
+## Factory installation (programming the IAP itself)
 
-## Flash Programming
-
-### Using OpenOCD
-
-The ML63Q2537 has a custom flash controller that requires the system clock at 48 MHz PLL and a specific accept-flag unlock sequence before any erase/write. All of that is implemented as TCL procs in `openocd/openocd.cfg`, so flashing is a three-step process:
+Use this on a blank or to-be-reprovisioned device, before the unit ships.
 
 ```bash
-# 1. Generate a TCL script of flash_write_word calls from the built hex
-python3 scripts/hex_to_flash.py build/solist_ai_template.hex flash_from_hex.tcl
+# 1. Generate a TCL script that erases the top 32 KB block and writes the three IAP bins
+python3 scripts/iap_flash.py build/ flash_iap.tcl
 
-# 2. Start openocd in one terminal
+# 2. Start OpenOCD in one terminal
 openocd -f openocd/openocd.cfg
-```
 
-```bash
 # 3. From another terminal, drive it via telnet
 telnet localhost 4444
-> prepare_flash             ;# erase + clock setup (defaults: 0x10000000, 256 KB)
-> source flash_from_hex.tcl
+> source flash_iap.tcl
 ```
 
-### Using J-Link
+The erase covers `0x10038000`–`0x1003FFFF` (one 32 KB block). The bottom of that block (`0x10038000`–`0x1003BFFF`) is the tail of the user-firmware region and is wiped as a side effect — this is intentional and only matters on first-time IAP installation, when the chip is expected to be blank. After install, normal user-firmware updates via the IAP do not touch the IAP region.
 
-TODO
+## Field update (sending a user firmware image to a running device)
 
-## Hardware Information
+Once the IAP is installed, end-user firmware is delivered over UARTF0 with any XMODEM-CRC sender:
 
-- **MCU**: ML63Q2537 (ROHM/Lapis)
-- **Core**: ARM Cortex-M0+ @ 48MHz
-- **Flash**: 256KB (starts at 0x10000000)
-- **RAM**: 16KB (starts at 0x20000000)
+1. Power the device. The IAP starts and waits on UARTF0 (P32 RX / P33 TX, 115200 8N1).
+2. From the host, send the user-firmware `.bin` using an XMODEM-CRC client (e.g. `sx -X`, `lrzsz`, Tera Term's XMODEM/CRC, or any tool that speaks XMODEM-CRC with SOH/STX block sizes).
+3. The IAP programs each block as it arrives. On success the device remaps the user region into the boot view and resets; the user firmware then runs.
+4. On any error the IAP emits `Error` on UARTF0 and aborts; power-cycle and retry.
 
-## Application Entry Point
+User firmware images must be raw `.bin`, linked to base `0x10000000`, and no larger than the user region (`0x3C000` bytes = 240 KB).
 
-The template's `src/main.c` is a minimal scaffold: it calls `device_initialize()` (which configures the system clock and starts a 2-second watchdog) and then loops, clearing the watchdog. Drop your application code into the loop body.
+## Repo layout
 
-```c
-#include <stdint.h>
-#include "ML63Q25x7.h"
-#include "wdt.h"
-#include "device.h"
-
-int main(void)
-{
-    if (device_initialize() != 0) {
-        return -1;
-    }
-
-    while (1) {
-        wdt_clear();
-        /* Your application code here */
-    }
-    return 0;
-}
+```
+src/                IAP application (built into solist_ai_template_iap ELF)
+  main.c              IAP entry — receive XMODEM, program user flash, remap, reset
+  xmodem.[ch]         XMODEM-CRC receiver (dual SOH/STX block size)
+  xmodem_crc.[ch]     CRC-16-CCITT for XMODEM
+  uartf0_i.[ch]       UARTF0 driver instance used by the IAP
+  remap_end.c         Flash-remap + reset sequence (executed from RAM)
+  codeoption.c        Code-option section contents
+  debug_log.[ch]      In-RAM event log for slowness analysis
+  device.[ch]         Clock + tick + WDT init
+driver/             ML63Q2537 peripheral drivers (static lib `driver`)
+utility/board/      Board helpers (static lib `utility`)
+external/CMSIS/     ARM CMSIS_6 submodule (REQUIRED)
+ml63q25x7/Source/   Startup, system init, GCC linker scripts
+  GCC/ML63Q25x7_iap.ld   IAP linker script (FLASH/FLASH2/FLASH3/REMAP layout)
+openocd/            OpenOCD config split into interface/ + target/ + top-level cfg
+scripts/
+  iap_flash.py        Generate TCL to flash the three IAP bins at their addresses
+  hex_to_flash.py     Generate TCL from a full .hex (used for non-IAP builds)
+tests_iap/          On-target test binary (build with -DBUILD_IAP_TESTS=ON)
 ```
 
-## Development
+## Tests
 
-### Adding Source Files
+`tests_iap/` builds a separate on-target binary that exercises IAP helpers (XMODEM CRC, I/O). It runs on the device itself — there is no host-side runner. Build with `-DBUILD_IAP_TESTS=ON`.
 
-1. Add your .c files to `src/` directory
-2. Update `src/CMakeLists.txt`:
+## Origin
 
-```cmake
-set(APP_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/main.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/your_file.c
-    PARENT_SCOPE
-)
-```
-
-### Using Drivers
-
-Available drivers in `driver/` directory:
-- WDT (Watchdog Timer)
-- SSIOF0 (SPI)
-- UARTF0 (UART)
-- IRQ (Interrupt controller)
-
-Include headers:
-```c
-#include "wdt.h"
-#include "ssiof0.h"
-#include "uartf0.h"
-```
-
-### Using Utilities
-
-Board utilities in `utility/board/`:
-- LED control
-- Peripheral initialization helpers
-
-## Notes
-
-- **Watchdog Timer**: Always active, must be cleared regularly with `wdt_clear()`
-- **Flash Programming**: Requires 48MHz system clock
-- **Stack Size**: 1KB (configured in linker script)
-- **Heap Size**: 3KB (configured in linker script)
-
-## Troubleshooting
-
-### Build Errors
-
-1. **Toolchain not found**:
-   ```bash
-   # Check ARM GCC installation
-   which arm-none-eabi-gcc
-   ```
-
-2. **CMSIS headers missing**:
-   ```bash
-   # Verify CMSIS installation
-   ls external/CMSIS/CMSIS/Core/Include/
-   ```
-
-### Flashing Issues
-
-- Ensure SWD connection is properly wired
-- Check debug probe (J-Link, CMSIS-DAP, etc.) is recognized
-- Verify OpenOCD configuration matches your debug probe
-
-## License
-
-Check individual source files for license information.
+Forked on 2026-06-05 from the `feature/IAP_impl` branch of `pban-rd-dev/solist_ai_gcc_template`, where the IAP was developed as a sample on top of the Solist-AI project template. The original template repo continues to evolve independently; cross-port changes manually when relevant.
