@@ -61,8 +61,8 @@ Add `-DBUILD_IAP_TESTS=ON` to also build the on-target test binary under `tests_
 
 Outputs in `build/`:
 
-- `solist_ai_template_iap` — ELF
-- `solist_ai_template_iap.hex` — full Intel HEX (for inspection)
+- `solist_ai_iap_firmware` — ELF
+- `solist_ai_iap_firmware.hex` — full Intel HEX (for inspection)
 - `iap_code.bin` — section image for `0x1003E000`
 - `iap_data.bin` — section image for `0x1003C000`
 - `iap_codeoption.bin` — section image for `0x1003FFC0`
@@ -101,7 +101,7 @@ User firmware images must be raw `.bin`, linked to base `0x10000000`, and no lar
 ## Repo layout
 
 ```
-src/                IAP application (built into solist_ai_template_iap ELF)
+src/                IAP application (built into solist_ai_iap_firmware ELF)
   main.c              IAP entry — receive XMODEM, program user flash, remap, reset
   xmodem.[ch]         XMODEM-CRC receiver (dual SOH/STX block size)
   xmodem_crc.[ch]     CRC-16-CCITT for XMODEM
@@ -128,4 +128,4 @@ tests_iap/          On-target test binary (build with -DBUILD_IAP_TESTS=ON)
 
 ## Origin
 
-Forked on 2026-06-05 from the `feature/IAP_impl` branch of `pban-rd-dev/solist_ai_gcc_template`, where the IAP was developed as a sample on top of the Solist-AI project template. The original template repo continues to evolve independently; cross-port changes manually when relevant.
+Forked on 2026-06-05 from the `feature/IAP_impl` branch of the upstream Solist-AI project scaffold, where the IAP was developed as a sample. The upstream scaffold continues to evolve independently; cross-port relevant changes manually.
