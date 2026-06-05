@@ -67,6 +67,8 @@ Outputs in `build/`:
 - `iap_data.bin` — section image for `0x1003C000`
 - `iap_codeoption.bin` — section image for `0x1003FFC0`
 
+Run `make bin` to additionally produce `solist_ai_iap_firmware.bin` — a whole-image raw binary covering the IAP load region (`0x1003C000`–`0x1003FFFF`, 16 KB) with 0xFF padding. Useful for inspection or single-file flash tools; not used by `scripts/iap_flash.py`.
+
 The whole-image `.hex` is **not** what gets programmed in production — the IAP is split across three non-contiguous flash regions, so the three `.bin` images are flashed at their distinct base addresses via the script below.
 
 ## Factory installation (programming the IAP itself)

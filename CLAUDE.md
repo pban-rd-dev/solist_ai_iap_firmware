@@ -79,6 +79,8 @@ The toolchain file `cmake/arm-none-eabi-toolchain.cmake` is auto-selected by the
 - `iap_codeoption.bin` → programmed at `0x1003FFC0`
 - With `BUILD_IAP_TESTS=ON`: `solist_ai_iap_firmware_test` + `.hex`/`.bin`
 
+Run `make bin` to additionally produce `solist_ai_iap_firmware.bin` — whole-image raw binary covering `0x1003C000`–`0x1003FFFF` (16 KB), padded with 0xFF. On-demand only; the three split bins above are what `scripts/iap_flash.py` programs.
+
 The whole-image `.hex` is not what gets programmed in production — the IAP lives in three non-contiguous flash regions and is flashed via the three `.bin` images at their distinct base addresses.
 
 CPU/compile flags are set centrally in the top-level `CMakeLists.txt` (`-mcpu=cortex-m0plus -mthumb -ffunction-sections -fdata-sections -Wall -Wextra`, C99, `-specs=nano.specs`, `--gc-sections`). MCU variant macros `ML63Q2537` and `ML63Q25x7` are defined for the target.

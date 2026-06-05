@@ -103,3 +103,14 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
   COMMAND ${CMAKE_SIZE} --format=berkeley $<TARGET_FILE:${PROJECT_NAME}>
   COMMENT "Size information:"
 )
+
+# Whole-image raw binary. Spans the IAP load region 0x1003C000-0x1003FFFF
+# (16 KB); intra-section padding is filled with 0xFF to match erased flash.
+# Built on demand: `make bin`. Not used by scripts/iap_flash.py, which
+# programs the three split bins above at their distinct base addresses.
+add_custom_target(bin
+  COMMAND ${CMAKE_OBJCOPY} -O binary --gap-fill 0xFF
+          $<TARGET_FILE:${PROJECT_NAME}> ${PROJECT_NAME}.bin
+  DEPENDS ${PROJECT_NAME}
+  COMMENT "Building ${PROJECT_NAME}.bin"
+)
