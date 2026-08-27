@@ -38,8 +38,10 @@ User-firmware images delivered through the IAP must therefore be linked to start
 
 - `arm-none-eabi-gcc` 10.3+ (tested with 14.3)
 - CMake ≥ 3.16
-- Python 3 (for `scripts/iap_flash.py`)
-- OpenOCD with a J-Link or CMSIS-DAP probe (for the factory flash step)
+- Ninja — required on Windows, optional elsewhere (see Build)
+- SEGGER J-Link software and a J-Link probe — the factory flash step
+  (`JLinkExe` on Linux/macOS, `JLink.exe` on Windows)
+- Python 3 + OpenOCD — only for the legacy OpenOCD flash path
 
 ## Setup (one-time)
 
@@ -51,13 +53,43 @@ git submodule update --init --recursive
 
 ## Build
 
+### Linux / macOS
+
 ```bash
 mkdir -p build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..   # Release: -Os -DNDEBUG  (use Debug for -O0 -g3)
 make -j4
 ```
 
-Add `-DBUILD_IAP_TESTS=ON` to also build the on-target test binary under `tests_iap/`.
+### Windows
+
+Use **Ninja**. CMake defaults to the Visual Studio generator on Windows, and that
+generator cannot drive `arm-none-eabi-gcc` — it emits `.vcxproj` files that build
+for MSVC/x86, which is not this project. Select the generator explicitly:
+
+```powershell
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j4
+cmake --build build --target bin       # optional whole-image .bin
+```
+
+A `build/` directory that was already configured with another generator has to be
+deleted first — CMake cannot switch generators in place. `-G "MinGW Makefiles"`
+with `mingw32-make` is an untested alternative; Ninja is the verified path.
+
+Both must be on PATH in the shell you configure from:
+
+- Arm GNU Toolchain — `arm-none-eabi-gcc --version` must succeed
+- Ninja — ships with Visual Studio 2019+, or `winget install Ninja-build.Ninja`
+
+The generated binaries are byte-identical to a Unix Makefiles build.
+
+Add `-DBUILD_IAP_TESTS=ON` to also build the on-target test binary; it lands in
+`build/tests_iap/`.
+
+Keep the checkout in a path without spaces if you can. The build itself handles
+them, but the OpenOCD TCL and J-Link Commander scripts both take unquoted file
+paths.
 
 Outputs in `build/`:
 
@@ -67,13 +99,70 @@ Outputs in `build/`:
 - `iap_data.bin` — section image for `0x1003C000`
 - `iap_codeoption.bin` — section image for `0x1003FFC0`
 
-Run `make bin` to additionally produce `solist_ai_iap_firmware.bin` — a whole-image raw binary covering the IAP load region (`0x1003C000`–`0x1003FFFF`, 16 KB) with 0xFF padding. Useful for inspection or single-file flash tools; not used by `scripts/iap_flash.py`.
+Run `make bin` (or `cmake --build build --target bin`, which works with any
+generator) to additionally produce `solist_ai_iap_firmware.bin` — a whole-image raw binary covering the IAP load region (`0x1003C000`–`0x1003FFFF`, 16 KB) with 0xFF padding. Useful for inspection or single-file flash tools; not used by `scripts/iap_flash.py`.
 
 The whole-image `.hex` is **not** what gets programmed in production — the IAP is split across three non-contiguous flash regions, so the three `.bin` images are flashed at their distinct base addresses via the script below.
 
 ## Factory installation (programming the IAP itself)
 
 Use this on a blank or to-be-reprovisioned device, before the unit ships.
+
+### With J-Link (recommended)
+
+Linux / macOS:
+
+```bash
+scripts/jlink_flash.sh                 # programs build/{iap_data,iap_code,iap_codeoption}.bin
+scripts/jlink_flash.sh <build_dir>     # explicit build directory
+```
+
+Windows (PowerShell 5.1 or later):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\jlink_flash.ps1
+powershell -ExecutionPolicy Bypass -File scripts\jlink_flash.ps1 <build_dir>
+```
+
+Both emit the same J-Link Commander script and honour the same `JLINK_*`
+environment variables; only the Commander binary differs (`JLinkExe` on
+Linux/macOS, `JLink.exe` on Windows).
+
+The script drives `JLinkExe` with the device definition in `jlink/JLinkDevices.xml`,
+which binds the ML63Q2537 flash bank at `0x10000000` to the vendor CMSIS flash
+algorithm `jlink/ML63Q25x7.FLM` (taken verbatim from ROHM.ML63Q25x7_DFP 0.4.0).
+J-Link downloads that algorithm into target RAM and runs it on the Cortex-M0+:
+it raises the clock to the 48 MHz PLL, drives FLASHA/FLASHD/FLASHCON/FLASHACP,
+and clears the watchdog while polling FLASHSTA. SWD only carries the image data
+instead of one round trip per programmed 32-bit word.
+
+Erase granularity is the algorithm's 2 KB sector, so only `0x1003C000`–`0x1003FFFF`
+is erased and the user-firmware region below it stays intact.
+
+Environment overrides: `JLINK_EXE` (path to `JLinkExe`), `JLINK_SPEED` (SWD kHz,
+default 4000), `JLINK_SN` (probe serial), `JLINK_VTREF` (force VTref in mV when
+the probe's VTref pin is not wired), `JLINK_NO_RUN=1` (leave the core halted).
+
+Measured on this repo's 4360-byte IAP image (J-Link Lite-Cortex-M V9, SWD
+4000 kHz): the full script — connect, erase, program all three bins, read-back
+verify, reset and run — takes **2.8 s**, against **10.7 s** for the OpenOCD path.
+Most of the J-Link time is fixed connect/prepare overhead; its measured
+program+verify rate is 23–32 KB/s, whereas the OpenOCD path costs one host round
+trip per programmed 32-bit word, so the gap widens with image size.
+
+Any other image can go through the same path:
+
+```bash
+scripts/jlink_flash.sh --file build/tests_iap/solist_ai_iap_firmware_test.hex
+scripts/jlink_flash.sh --file some_image.bin 0x10000000
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\jlink_flash.ps1 -Image build\tests_iap\solist_ai_iap_firmware_test.hex
+powershell -ExecutionPolicy Bypass -File scripts\jlink_flash.ps1 -Image some_image.bin -Address 0x10000000
+```
+
+### With OpenOCD (legacy fallback)
 
 ```bash
 # 1. Generate a TCL script that erases the top 32 KB block and writes the three IAP bins
@@ -87,7 +176,12 @@ telnet localhost 4444
 > source flash_iap.tcl
 ```
 
-The erase covers `0x10038000`–`0x1003FFFF` (one 32 KB block). The bottom of that block (`0x10038000`–`0x1003BFFF`) is the tail of the user-firmware region and is wiped as a side effect — this is intentional and only matters on first-time IAP installation, when the chip is expected to be blank. After install, normal user-firmware updates via the IAP do not touch the IAP region.
+This path programs one 32-bit word per SWD transaction sequence and is
+correspondingly slow. Its erase covers `0x10038000`–`0x1003FFFF` (one 32 KB block).
+The bottom of that block (`0x10038000`–`0x1003BFFF`) is the tail of the
+user-firmware region and is wiped as a side effect — intentional, and only
+relevant on first-time IAP installation when the chip is expected to be blank.
+After install, normal user-firmware updates via the IAP do not touch the IAP region.
 
 ## Field update (sending a user firmware image to a running device)
 
@@ -117,8 +211,13 @@ utility/board/      Board helpers (static lib `utility`)
 external/CMSIS/     ARM CMSIS_6 submodule (REQUIRED)
 ml63q25x7/Source/   Startup, system init, GCC linker scripts
   GCC/ML63Q25x7_iap.ld   IAP linker script (FLASH/FLASH2/FLASH3/REMAP layout)
+jlink/              J-Link device definition + vendor CMSIS flash algorithm
+  JLinkDevices.xml       ML63Q2537 flash bank bound to ML63Q25x7.FLM
+  ML63Q25x7.FLM          Flash algorithm, verbatim from ROHM.ML63Q25x7_DFP 0.4.0
 openocd/            OpenOCD config split into interface/ + target/ + top-level cfg
 scripts/
+  jlink_flash.sh      Program the IAP (or any image) via JLinkExe — recommended
+  jlink_flash.ps1     Same flow for Windows / JLink.exe (PowerShell 5.1+)
   iap_flash.py        Generate TCL to flash the three IAP bins at their addresses
   hex_to_flash.py     Generate TCL from a full .hex (used for non-IAP builds)
 tests_iap/          On-target test binary (build with -DBUILD_IAP_TESTS=ON)

@@ -45,9 +45,8 @@ target_link_libraries(${TEST_TARGET_NAME} PRIVATE
 # Use master's flat linker layout — tests are not the IAP firmware itself.
 set(LINKER_SCRIPT "${CMAKE_SOURCE_DIR}/ml63q25x7/Source/GCC/ML63Q25x7_gcc.ld")
 if(EXISTS ${LINKER_SCRIPT})
-    set_target_properties(${TEST_TARGET_NAME} PROPERTIES
-        LINK_FLAGS "-T${LINKER_SCRIPT}"
-    )
+    target_link_options(${TEST_TARGET_NAME} PRIVATE "-T${LINKER_SCRIPT}")
+    set_target_properties(${TEST_TARGET_NAME} PROPERTIES LINK_DEPENDS ${LINKER_SCRIPT})
 else()
     message(FATAL_ERROR "GCC linker script not found: ${LINKER_SCRIPT}")
 endif()
