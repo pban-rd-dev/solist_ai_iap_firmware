@@ -1,8 +1,8 @@
 # Solist-AI IAP Firmware (ML63Q2537)
 
-Pre-installed In-Application Programming (IAP) firmware for ML63Q2537-based devices. Factory-flashed into the top 32 KB of internal flash, it accepts a user-firmware image over UART (XMODEM-CRC), programs it into the user-firmware region, then remaps and resets to boot the new image.
+In-Application Programming (IAP) firmware for ML63Q2537-based devices. It occupies the top 32 KB of internal flash, accepts a user-firmware image over UART (XMODEM-CRC), programs it into the user-firmware region, then remaps and resets to boot the new image.
 
-This is the firmware that ships on the device. End-user applications are linked separately and delivered through the IAP update flow described below.
+End-user applications are linked separately and delivered through the IAP update flow described below.
 
 ## What this firmware does
 

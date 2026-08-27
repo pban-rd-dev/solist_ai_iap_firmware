@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Pre-installed **IAP (In-Application Programming) firmware** for the ML63Q2537 (ROHM/Lapis "Solist-AI") MCU, built with CMake + arm-none-eabi-gcc. Factory-flashed into the top 32 KB of internal flash. At boot, the IAP brings up UARTF0, accepts an XMODEM-CRC transfer of a user-firmware image, programs it into the user-firmware region, then remaps + resets to boot the new image.
+**IAP (In-Application Programming) firmware** for the ML63Q2537 (ROHM/Lapis "Solist-AI") MCU, built with CMake + arm-none-eabi-gcc. It occupies the top 32 KB of internal flash. At boot, the IAP brings up UARTF0, accepts an XMODEM-CRC transfer of a user-firmware image, programs it into the user-firmware region, then remaps + resets to boot the new image.
 
-This is the firmware that ships on the device. End-user applications are linked separately and delivered through the IAP update flow.
+End-user applications are linked separately and delivered through the IAP update flow.
 
 **Hardware:**
 - MCU: ML63Q2537 (ARM Cortex-M0+ @ 48 MHz, PLL-driven)
