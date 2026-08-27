@@ -1,0 +1,47 @@
+Third-party components
+======================
+
+This repository contains third-party code that is not covered by LICENSE and
+remains subject to its own terms. Redistribution of the ROHM components in this
+repository is done with ROHM's permission.
+
+
+ROHM Co., Ltd.
+--------------
+
+  driver/               ML63Q2537 peripheral drivers
+  utility/board/        Board helper sources
+  ml63q25x7/            Device headers, startup, system init and linker scripts
+  jlink/ML63Q25x7.FLM   Flash algorithm, verbatim from ROHM.ML63Q25x7_DFP 0.4.0
+
+Copyright (C) 2024 ROHM Co., Ltd. All rights reserved.
+
+The terms are stated in each source file header. In summary: the software is
+provided "as is" with all warranties disclaimed, and may be modified and used
+on the user's own responsibility for the purpose of developing software for use
+with a microcontroller manufactured by ROHM.
+
+
+Arm Limited
+-----------
+
+The following files under ml63q25x7/ derive from Arm CMSIS and carry
+SPDX-License-Identifier: Apache-2.0 alongside ROHM's copyright:
+
+  ml63q25x7/Source/startup_ML63Q25x7.c
+  ml63q25x7/Source/system_ML63Q25x7.c
+  ml63q25x7/include/system_ML63Q25x7.h
+  ml63q25x7/Source/GCC/ML63Q25x7_gcc.ld
+
+Copyright (c) 2009-2020 Arm Limited. All rights reserved.
+Licensed under the Apache License, Version 2.0.
+http://www.apache.org/licenses/LICENSE-2.0
+
+
+Arm CMSIS (submodule)
+---------------------
+
+  external/CMSIS        Arm CMSIS_6
+
+Tracked as a git submodule and fetched from its upstream repository; no CMSIS
+sources are vendored into this repository. See that repository for its license.
