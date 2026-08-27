@@ -2,3 +2,4 @@ build
 *.tcl
 *.*~
 *.zip
+*.swp
