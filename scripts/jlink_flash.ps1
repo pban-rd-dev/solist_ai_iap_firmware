@@ -32,7 +32,7 @@
     powershell -ExecutionPolicy Bypass -File scripts\jlink_flash.ps1
 
 .EXAMPLE
-    powershell -ExecutionPolicy Bypass -File scripts\jlink_flash.ps1 -Image build\solist_ai_iap_firmware_test.hex
+    powershell -ExecutionPolicy Bypass -File scripts\jlink_flash.ps1 -Image build\tests_iap\solist_ai_iap_firmware_test.hex
 
 .NOTES
     Environment overrides (same names as scripts/jlink_flash.sh):

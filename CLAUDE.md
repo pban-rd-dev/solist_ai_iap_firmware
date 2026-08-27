@@ -65,6 +65,8 @@ git submodule update --init --recursive
 
 ## Build
 
+### Linux / macOS
+
 ```bash
 mkdir -p build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..    # Release: -Os -DNDEBUG
@@ -73,7 +75,31 @@ cmake -DCMAKE_BUILD_TYPE=Debug ..      # Debug:   -O0 -g3 -DDEBUG
 make -j4
 ```
 
-Add `-DBUILD_IAP_TESTS=ON` to also build the on-target test binary under `tests_iap/`.
+### Windows
+
+CMake defaults to the Visual Studio generator on Windows. That generator cannot
+drive `arm-none-eabi-gcc` — it emits `.vcxproj` files that build for MSVC/x86,
+which is not this project. Select Ninja (or a Makefile generator) explicitly:
+
+```powershell
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j4
+cmake --build build --target bin       # optional whole-image .bin
+```
+
+`-G "MinGW Makefiles"` with `mingw32-make` works as well. A `build/` directory
+that was already configured with another generator has to be deleted first —
+CMake cannot switch generators in place.
+
+Both must be on PATH in the shell you configure from:
+
+- Arm GNU Toolchain — `arm-none-eabi-gcc --version` must succeed
+- Ninja — ships with Visual Studio 2019+, or `winget install Ninja-build.Ninja`
+
+The generated binaries are byte-identical to a Unix Makefiles build.
+
+Add `-DBUILD_IAP_TESTS=ON` to also build the on-target test binary; it lands in
+`build/tests_iap/`.
 
 The toolchain file `cmake/arm-none-eabi-toolchain.cmake` is auto-selected by the top-level `CMakeLists.txt` if `CMAKE_TOOLCHAIN_FILE` is unset — do not pass `-DCMAKE_TOOLCHAIN_FILE=...` unless overriding intentionally.
 
@@ -106,7 +132,7 @@ Linux / macOS:
 ```bash
 scripts/jlink_flash.sh            # programs build/{iap_data,iap_code,iap_codeoption}.bin
 scripts/jlink_flash.sh <build_dir>
-scripts/jlink_flash.sh --file build/solist_ai_iap_firmware_test.hex
+scripts/jlink_flash.sh --file build/tests_iap/solist_ai_iap_firmware_test.hex
 ```
 
 Windows (PowerShell):
@@ -114,7 +140,7 @@ Windows (PowerShell):
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\jlink_flash.ps1
 powershell -ExecutionPolicy Bypass -File scripts\jlink_flash.ps1 <build_dir>
-powershell -ExecutionPolicy Bypass -File scripts\jlink_flash.ps1 -Image build\solist_ai_iap_firmware_test.hex
+powershell -ExecutionPolicy Bypass -File scripts\jlink_flash.ps1 -Image build\tests_iap\solist_ai_iap_firmware_test.hex
 ```
 
 Both scripts generate the same J-Link Commander script and honour the same

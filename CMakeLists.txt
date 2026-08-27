@@ -60,9 +60,11 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 # IAP-specific linker script (FLASH/FLASH2/FLASH3/REMAP layout).
 set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/ml63q25x7/Source/GCC/ML63Q25x7_iap.ld")
 if(EXISTS ${LINKER_SCRIPT})
-  set_target_properties(${PROJECT_NAME} PROPERTIES
-    LINK_FLAGS "-T${LINKER_SCRIPT}"
-  )
+  # target_link_options escapes each element, so a source path containing a
+  # space survives. The legacy LINK_FLAGS property is a raw string and would
+  # split "-T.../my repo/..." at the space.
+  target_link_options(${PROJECT_NAME} PRIVATE "-T${LINKER_SCRIPT}")
+  set_target_properties(${PROJECT_NAME} PROPERTIES LINK_DEPENDS ${LINKER_SCRIPT})
 else()
   message(FATAL_ERROR "IAP linker script not found: ${LINKER_SCRIPT}")
 endif()
