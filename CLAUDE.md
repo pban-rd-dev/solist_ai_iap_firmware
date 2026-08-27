@@ -41,7 +41,6 @@ utility/board/      Board helpers (LEDs, periph init) — static lib `utility`
 external/CMSIS/     ARM CMSIS_6 submodule (REQUIRED — see Setup)
 ml63q25x7/Source/   Startup, system init, GCC linker scripts
   GCC/ML63Q25x7_iap.ld   IAP linker script (FLASH/FLASH2/FLASH3/REMAP layout)
-RTE/                Runtime Environment (system init)
 cmake/              arm-none-eabi-toolchain.cmake (auto-loaded by top-level CMakeLists)
 jlink/              SEGGER J-Link device definition + vendor CMSIS flash algorithm
   JLinkDevices.xml       ML63Q2537 flash bank wired to ML63Q25x7.FLM

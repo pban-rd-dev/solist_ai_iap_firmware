@@ -13,7 +13,6 @@ target_include_directories(driver PUBLIC
 
 target_include_directories(driver PUBLIC
     ${CMAKE_SOURCE_DIR}/ml63q25x7/include
-    ${CMAKE_SOURCE_DIR}/RTE/Device/ML63Q25x7
     ${CMAKE_SOURCE_DIR}/external/CMSIS/CMSIS/Core/Include
     ${CMAKE_SOURCE_DIR}/src
 )

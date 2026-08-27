@@ -19,7 +19,7 @@ set(TEST_APP_SOURCES
     ${CMAKE_SOURCE_DIR}/src/codeoption.c
 )
 
-set(RTE_SOURCES
+set(STARTUP_SOURCES
     ${CMAKE_SOURCE_DIR}/ml63q25x7/Source/startup_ML63Q25x7.c
     ${CMAKE_SOURCE_DIR}/ml63q25x7/Source/system_ML63Q25x7.c
 )
@@ -28,7 +28,7 @@ set(TEST_TARGET_NAME ${PROJECT_NAME}_test)
 add_executable(${TEST_TARGET_NAME}
     ${TEST_SOURCES}
     ${TEST_APP_SOURCES}
-    ${RTE_SOURCES}
+    ${STARTUP_SOURCES}
 )
 
 target_include_directories(${TEST_TARGET_NAME} PRIVATE

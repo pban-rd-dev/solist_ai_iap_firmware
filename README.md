@@ -214,6 +214,8 @@ ml63q25x7/Source/   Startup, system init, GCC linker scripts
 jlink/              J-Link device definition + vendor CMSIS flash algorithm
   JLinkDevices.xml       ML63Q2537 flash bank bound to ML63Q25x7.FLM
   ML63Q25x7.FLM          Flash algorithm, verbatim from ROHM.ML63Q25x7_DFP 0.4.0
+docs/
+  iap_reference.md    End-user guide: entering IAP mode and sending firmware (Japanese)
 openocd/            OpenOCD config split into interface/ + target/ + top-level cfg
 scripts/
   jlink_flash.sh      Program the IAP (or any image) via JLinkExe — recommended
@@ -226,4 +228,17 @@ tests_iap/          On-target test binary (build with -DBUILD_IAP_TESTS=ON)
 ## Tests
 
 `tests_iap/` builds a separate on-target binary that exercises IAP helpers (XMODEM CRC, I/O). It runs on the device itself — there is no host-side runner. Build with `-DBUILD_IAP_TESTS=ON`.
+
+## Third-party code
+
+This repository is not all first-party. Provenance:
+
+| Path | Origin |
+| ---- | ------ |
+| `driver/`, `utility/` | ROHM Co., Ltd. — peripheral drivers and board helpers, subject to ROHM's terms as stated in each file header |
+| `ml63q25x7/` | ROHM device headers and linker scripts. `startup_ML63Q25x7.c`, `system_ML63Q25x7.[ch]` and `ML63Q25x7_gcc.ld` derive from Arm CMSIS and carry `SPDX-License-Identifier: Apache-2.0` alongside ROHM's copyright |
+| `jlink/ML63Q25x7.FLM` | ROHM — flash algorithm taken verbatim from ROHM.ML63Q25x7_DFP 0.4.0 |
+| `external/CMSIS` | Arm CMSIS_6, tracked as a git submodule (not vendored) |
+
+`src/`, `scripts/`, `openocd/`, `tests_iap/`, `cmake/` and `jlink/JLinkDevices.xml` are this project's own work.
 

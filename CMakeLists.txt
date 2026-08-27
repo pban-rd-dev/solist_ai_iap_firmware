@@ -40,12 +40,12 @@ if(BUILD_IAP_TESTS)
   add_subdirectory(tests_iap)
 endif()
 
-set(RTE_SOURCES
+set(STARTUP_SOURCES
   ml63q25x7/Source/startup_ML63Q25x7.c
   ml63q25x7/Source/system_ML63Q25x7.c
 )
 
-add_executable(${PROJECT_NAME} ${APP_SOURCES} ${RTE_SOURCES})
+add_executable(${PROJECT_NAME} ${APP_SOURCES} ${STARTUP_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src
