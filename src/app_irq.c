@@ -1,6 +1,6 @@
 /*****************************************************************************
  * @file    app_irq.c
- * @brief   Application-level IRQ handlers for the IAP sample
+ * @brief   Application-level IRQ handlers for the IAP firmware
  *****************************************************************************/
 
 #include "mcu.h"

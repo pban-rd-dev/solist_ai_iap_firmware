@@ -15,9 +15,6 @@ so the block erase wipes a small slice of user-firmware area below 0x1003C000
 as a side effect. That is intentional: first-time IAP installation assumes a
 blank chip, and after install the IAP region is not re-erased on normal use.
 
-This script does NOT modify master's scripts/hex_to_flash.py. It is specific
-to feature/IAP_impl.
-
 Usage:
     python3 scripts/iap_flash.py <build_dir> [output.tcl]
 
@@ -100,8 +97,7 @@ def main():
         out.write("proc program_iap {} {\n")
         out.write('    echo "Programming IAP image to flash..."\n\n')
 
-        # Order matches master's scripts/hex_to_flash.py (proven workflow):
-        # clock first, then WDT, then clear.
+        # Clock first, then WDT, then clear.
         out.write("    # Initialize system\n")
         out.write("    set_clock_48mhz\n")
         out.write("    wdt_init\n")

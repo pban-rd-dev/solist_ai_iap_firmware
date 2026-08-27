@@ -1,6 +1,6 @@
 # Solist-AI IAP Firmware (ML63Q2537)
 
-Pre-installed In-Application Programming (IAP) firmware for ML63Q2537-based Solist-AI customer devices. Factory-flashed into the top 32 KB of internal flash, it accepts a user-firmware image over UART (XMODEM-CRC), programs it into the user-firmware region, then remaps and resets to boot the new image.
+Pre-installed In-Application Programming (IAP) firmware for ML63Q2537-based devices. Factory-flashed into the top 32 KB of internal flash, it accepts a user-firmware image over UART (XMODEM-CRC), programs it into the user-firmware region, then remaps and resets to boot the new image.
 
 This is the firmware that ships on the device. End-user applications are linked separately and delivered through the IAP update flow described below.
 
@@ -204,7 +204,7 @@ src/                IAP application (built into solist_ai_iap_firmware ELF)
   uartf0_i.[ch]       UARTF0 driver instance used by the IAP
   remap_end.c         Flash-remap + reset sequence (executed from RAM)
   codeoption.c        Code-option section contents
-  debug_log.[ch]      In-RAM event log for slowness analysis
+  debug_log.[ch]      In-RAM event log, read over SWD
   device.[ch]         Clock + tick + WDT init
 driver/             ML63Q2537 peripheral drivers (static lib `driver`)
 utility/board/      Board helpers (static lib `utility`)
@@ -214,6 +214,8 @@ ml63q25x7/Source/   Startup, system init, GCC linker scripts
 jlink/              J-Link device definition + vendor CMSIS flash algorithm
   JLinkDevices.xml       ML63Q2537 flash bank bound to ML63Q25x7.FLM
   ML63Q25x7.FLM          Flash algorithm, verbatim from ROHM.ML63Q25x7_DFP 0.4.0
+docs/
+  iap_reference.md    End-user guide: entering IAP mode and sending firmware (Japanese)
 openocd/            OpenOCD config split into interface/ + target/ + top-level cfg
 scripts/
   jlink_flash.sh      Program the IAP (or any image) via JLinkExe — recommended
@@ -227,6 +229,16 @@ tests_iap/          On-target test binary (build with -DBUILD_IAP_TESTS=ON)
 
 `tests_iap/` builds a separate on-target binary that exercises IAP helpers (XMODEM CRC, I/O). It runs on the device itself — there is no host-side runner. Build with `-DBUILD_IAP_TESTS=ON`.
 
-## Origin
+## License
 
-Forked on 2026-06-05 from the `feature/IAP_impl` branch of the upstream Solist-AI project scaffold, where the IAP was developed as a sample. The upstream scaffold continues to evolve independently; cross-port relevant changes manually.
+Copyright (c) 2026 株式会社ピーバンドットコム. All rights reserved. Published for
+reference; see [LICENSE](LICENSE) for the terms and the exact list of paths they
+cover.
+
+This repository is not all first-party. `driver/`, `utility/` and `ml63q25x7/`
+are ROHM Co., Ltd. code, redistributed here with ROHM's permission, and
+`jlink/ML63Q25x7.FLM` comes verbatim from ROHM's device family pack. Four files
+under `ml63q25x7/` derive from Arm CMSIS and are Apache-2.0. `external/CMSIS` is
+a submodule rather than vendored source. Each component keeps its own terms —
+see [NOTICE](NOTICE).
+

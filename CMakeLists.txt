@@ -40,12 +40,12 @@ if(BUILD_IAP_TESTS)
   add_subdirectory(tests_iap)
 endif()
 
-set(RTE_SOURCES
+set(STARTUP_SOURCES
   ml63q25x7/Source/startup_ML63Q25x7.c
   ml63q25x7/Source/system_ML63Q25x7.c
 )
 
-add_executable(${PROJECT_NAME} ${APP_SOURCES} ${RTE_SOURCES})
+add_executable(${PROJECT_NAME} ${APP_SOURCES} ${STARTUP_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -74,8 +74,8 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
   ML63Q25x7
 )
 
-# Whole-image hex (parity with master; useful for inspection but the IAP is
-# actually programmed via the three split bins below).
+# Whole-image hex. Useful for inspection; the IAP is actually programmed via
+# the three split bins below.
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
   COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:${PROJECT_NAME}> ${PROJECT_NAME}.hex
   COMMENT "Building ${PROJECT_NAME}.hex"

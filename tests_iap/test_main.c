@@ -1,8 +1,8 @@
 /*****************************************************************************
  * @file    test_main.c
- * @brief   tests_iap entry point — smoke tests for the IAP sample
+ * @brief   tests_iap entry point — smoke tests for the IAP firmware
  *
- * On-target test binary. Boots like a normal app (uses the master linker
+ * On-target test binary. Boots like a normal app (uses the flat linker
  * layout, not the IAP split layout), runs the registered tests, prints
  * results over UART (P32/P33 @ 115200), then idles with the WDT clearing.
  *****************************************************************************/

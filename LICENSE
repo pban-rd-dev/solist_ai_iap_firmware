@@ -1,0 +1,39 @@
+Copyright (c) 2026 株式会社ピーバンドットコム
+All rights reserved.
+
+This software is published for reference purposes.
+
+No license or right is granted to reproduce, modify, adapt, merge, publish,
+distribute, sublicense, or sell this software or any portion of it, except with
+the prior written permission of the copyright holder. No rights are granted by
+implication, estoppel, or otherwise.
+
+Nothing in this notice restricts the use of the firmware as pre-installed on
+hardware supplied by or on behalf of the copyright holder.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+--------------------------------------------------------------------------------
+
+Scope
+
+The terms above cover the parts of this repository authored by the copyright
+holder:
+
+  src/                     IAP application sources
+  scripts/                 Flash and image-generation tooling
+  openocd/                 OpenOCD configuration
+  tests_iap/               On-target test binary
+  cmake/                   Toolchain file
+  jlink/JLinkDevices.xml   J-Link device definition
+  docs/                    Documentation
+  CMakeLists.txt, README.md, CLAUDE.md and the remaining repository-root files
+
+This repository also contains third-party components that are NOT covered by
+the terms above and remain subject to their own licenses. They are listed in
+NOTICE.

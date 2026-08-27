@@ -1,6 +1,6 @@
 /*****************************************************************************
  * @file     main.c
- * @brief    IAP (In-Application Programming) sample for ML63Q2537
+ * @brief    IAP (In-Application Programming) firmware for ML63Q2537
  *
  * Receives a user firmware image over UART using XMODEM-CRC, programs it
  * into the user flash area (0x10000000–0x1003BFFF), then remaps + resets

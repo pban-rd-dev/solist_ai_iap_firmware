@@ -1,8 +1,8 @@
 # tests_iap CMakeLists.txt
 #
 # Builds a separate on-target test binary that exercises pieces of the IAP
-# implementation (currently: xmodem_crc). Uses the master linker layout — it
-# does NOT need the split FLASH/FLASH2 layout that the IAP main image uses.
+# implementation (currently: xmodem_crc). Uses the flat linker layout — it does
+# NOT need the split FLASH/FLASH2 layout that the IAP main image uses.
 
 set(TEST_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test_main.c
@@ -19,7 +19,7 @@ set(TEST_APP_SOURCES
     ${CMAKE_SOURCE_DIR}/src/codeoption.c
 )
 
-set(RTE_SOURCES
+set(STARTUP_SOURCES
     ${CMAKE_SOURCE_DIR}/ml63q25x7/Source/startup_ML63Q25x7.c
     ${CMAKE_SOURCE_DIR}/ml63q25x7/Source/system_ML63Q25x7.c
 )
@@ -28,7 +28,7 @@ set(TEST_TARGET_NAME ${PROJECT_NAME}_test)
 add_executable(${TEST_TARGET_NAME}
     ${TEST_SOURCES}
     ${TEST_APP_SOURCES}
-    ${RTE_SOURCES}
+    ${STARTUP_SOURCES}
 )
 
 target_include_directories(${TEST_TARGET_NAME} PRIVATE
@@ -42,7 +42,7 @@ target_link_libraries(${TEST_TARGET_NAME} PRIVATE
     utility
 )
 
-# Use master's flat linker layout — tests are not the IAP firmware itself.
+# Use the flat linker layout — the test binary is not the IAP firmware itself.
 set(LINKER_SCRIPT "${CMAKE_SOURCE_DIR}/ml63q25x7/Source/GCC/ML63Q25x7_gcc.ld")
 if(EXISTS ${LINKER_SCRIPT})
     target_link_options(${TEST_TARGET_NAME} PRIVATE "-T${LINKER_SCRIPT}")
