@@ -1,6 +1,6 @@
 # Solist-AI IAP Firmware (ML63Q2537)
 
-Pre-installed In-Application Programming (IAP) firmware for ML63Q2537-based Solist-AI customer devices. Factory-flashed into the top 32 KB of internal flash, it accepts a user-firmware image over UART (XMODEM-CRC), programs it into the user-firmware region, then remaps and resets to boot the new image.
+Pre-installed In-Application Programming (IAP) firmware for ML63Q2537-based devices. Factory-flashed into the top 32 KB of internal flash, it accepts a user-firmware image over UART (XMODEM-CRC), programs it into the user-firmware region, then remaps and resets to boot the new image.
 
 This is the firmware that ships on the device. End-user applications are linked separately and delivered through the IAP update flow described below.
 
@@ -204,7 +204,7 @@ src/                IAP application (built into solist_ai_iap_firmware ELF)
   uartf0_i.[ch]       UARTF0 driver instance used by the IAP
   remap_end.c         Flash-remap + reset sequence (executed from RAM)
   codeoption.c        Code-option section contents
-  debug_log.[ch]      In-RAM event log for slowness analysis
+  debug_log.[ch]      In-RAM event log, read over SWD
   device.[ch]         Clock + tick + WDT init
 driver/             ML63Q2537 peripheral drivers (static lib `driver`)
 utility/board/      Board helpers (static lib `utility`)
@@ -227,6 +227,3 @@ tests_iap/          On-target test binary (build with -DBUILD_IAP_TESTS=ON)
 
 `tests_iap/` builds a separate on-target binary that exercises IAP helpers (XMODEM CRC, I/O). It runs on the device itself — there is no host-side runner. Build with `-DBUILD_IAP_TESTS=ON`.
 
-## Origin
-
-Forked on 2026-06-05 from the `feature/IAP_impl` branch of the upstream Solist-AI project scaffold, where the IAP was developed as a sample. The upstream scaffold continues to evolve independently; cross-port relevant changes manually.

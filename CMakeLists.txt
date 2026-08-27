@@ -74,8 +74,8 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
   ML63Q25x7
 )
 
-# Whole-image hex (parity with master; useful for inspection but the IAP is
-# actually programmed via the three split bins below).
+# Whole-image hex. Useful for inspection; the IAP is actually programmed via
+# the three split bins below.
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
   COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:${PROJECT_NAME}> ${PROJECT_NAME}.hex
   COMMENT "Building ${PROJECT_NAME}.hex"

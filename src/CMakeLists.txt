@@ -1,4 +1,4 @@
-# Application source files for the IAP sample
+# Application source files for the IAP firmware
 
 set(APP_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/main.c

@@ -1,6 +1,6 @@
 /*****************************************************************************
  * @file    debug_log.c
- * @brief   In-RAM event ring buffer for IAP slowness analysis (memory-only)
+ * @brief   In-RAM event ring buffer for IAP timing analysis (memory-only)
  *
  * Pure memory-based — events are timestamped (via g_dbg_tick, incremented by
  * LTBC IRQ at 128 Hz) and stored in s_log[]. No UART output: analysis is

@@ -115,8 +115,9 @@ uint16_t device_delay_ms(uint16_t ms)
 }
 #pragma GCC pop_options
 
-/**
- * TODO: CPU counts on interruption
+/*
+ * Busy-wait delay. The loop count is derived from the tick rate, so an
+ * interrupt taken during the wait extends the actual delay.
  */
 uint16_t device_delay_us(uint16_t us)
 {

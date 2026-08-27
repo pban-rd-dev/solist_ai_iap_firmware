@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Pre-installed **IAP (In-Application Programming) firmware** for the ML63Q2537 (ROHM/Lapis "Solist-AI") MCU, built with CMake + arm-none-eabi-gcc. Factory-flashed into the top 32 KB of internal flash on customer devices. At boot, the IAP brings up UARTF0, accepts an XMODEM-CRC transfer of a user-firmware image, programs it into the user-firmware region, then remaps + resets to boot the new image.
+Pre-installed **IAP (In-Application Programming) firmware** for the ML63Q2537 (ROHM/Lapis "Solist-AI") MCU, built with CMake + arm-none-eabi-gcc. Factory-flashed into the top 32 KB of internal flash. At boot, the IAP brings up UARTF0, accepts an XMODEM-CRC transfer of a user-firmware image, programs it into the user-firmware region, then remaps + resets to boot the new image.
 
 This is the firmware that ships on the device. End-user applications are linked separately and delivered through the IAP update flow.
 
@@ -32,7 +32,7 @@ src/                IAP application — built into solist_ai_iap_firmware ELF
   uartf0_i.[ch]       UARTF0 driver instance used by the IAP
   remap_end.c         Flash-remap + reset sequence (executed from RAM)
   codeoption.c/.h     Code-option section contents
-  debug_log.[ch]      In-RAM event log for slowness analysis
+  debug_log.[ch]      In-RAM event log, read over SWD
   device.[ch]         Clock + tick + WDT init, delay_us/ms
   app_irq.c           App-level IRQ handlers
   syscalls.c          Newlib stubs

@@ -1,6 +1,6 @@
 /*****************************************************************************
  * @file    debug_log.h
- * @brief   In-RAM event ring buffer for IAP slowness analysis (memory-only)
+ * @brief   In-RAM event ring buffer for IAP timing analysis (memory-only)
  *
  * Events are stamped with g_dbg_tick (128 Hz, incremented by LTBC IRQ).
  * No UART output — read s_log[] over SWD after halting the CPU.
