@@ -77,9 +77,9 @@ make -j4
 
 ### Windows
 
-CMake defaults to the Visual Studio generator on Windows. That generator cannot
-drive `arm-none-eabi-gcc` — it emits `.vcxproj` files that build for MSVC/x86,
-which is not this project. Select Ninja (or a Makefile generator) explicitly:
+Use **Ninja**. CMake defaults to the Visual Studio generator on Windows, and that
+generator cannot drive `arm-none-eabi-gcc` — it emits `.vcxproj` files that build
+for MSVC/x86, which is not this project. Select the generator explicitly:
 
 ```powershell
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
@@ -87,9 +87,9 @@ cmake --build build -j4
 cmake --build build --target bin       # optional whole-image .bin
 ```
 
-`-G "MinGW Makefiles"` with `mingw32-make` works as well. A `build/` directory
-that was already configured with another generator has to be deleted first —
-CMake cannot switch generators in place.
+A `build/` directory that was already configured with another generator has to be
+deleted first — CMake cannot switch generators in place. `-G "MinGW Makefiles"`
+with `mingw32-make` is an untested alternative; Ninja is the verified path.
 
 Both must be on PATH in the shell you configure from:
 
@@ -110,7 +110,7 @@ The toolchain file `cmake/arm-none-eabi-toolchain.cmake` is auto-selected by the
 - `iap_codeoption.bin` → programmed at `0x1003FFC0`
 - With `BUILD_IAP_TESTS=ON`: `solist_ai_iap_firmware_test` + `.hex`/`.bin`
 
-Run `make bin` to additionally produce `solist_ai_iap_firmware.bin` — whole-image raw binary covering `0x1003C000`–`0x1003FFFF` (16 KB), padded with 0xFF. On-demand only; the three split bins above are what `scripts/iap_flash.py` programs.
+Run `make bin` (or `cmake --build build --target bin` for a non-Makefile generator) to additionally produce `solist_ai_iap_firmware.bin` — whole-image raw binary covering `0x1003C000`–`0x1003FFFF` (16 KB), padded with 0xFF. On-demand only; the three split bins above are what `scripts/iap_flash.py` programs.
 
 The whole-image `.hex` is not what gets programmed in production — the IAP lives in three non-contiguous flash regions and is flashed via the three `.bin` images at their distinct base addresses.
 

@@ -38,6 +38,7 @@ User-firmware images delivered through the IAP must therefore be linked to start
 
 - `arm-none-eabi-gcc` 10.3+ (tested with 14.3)
 - CMake ≥ 3.16
+- Ninja — required on Windows, optional elsewhere (see Build)
 - SEGGER J-Link software and a J-Link probe — the factory flash step
   (`JLinkExe` on Linux/macOS, `JLink.exe` on Windows)
 - Python 3 + OpenOCD — only for the legacy OpenOCD flash path
@@ -62,9 +63,9 @@ make -j4
 
 ### Windows
 
-CMake defaults to the Visual Studio generator on Windows. That generator cannot
-drive `arm-none-eabi-gcc` — it emits `.vcxproj` files that build for MSVC/x86,
-which is not this project. Select Ninja (or a Makefile generator) explicitly:
+Use **Ninja**. CMake defaults to the Visual Studio generator on Windows, and that
+generator cannot drive `arm-none-eabi-gcc` — it emits `.vcxproj` files that build
+for MSVC/x86, which is not this project. Select the generator explicitly:
 
 ```powershell
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
@@ -72,9 +73,9 @@ cmake --build build -j4
 cmake --build build --target bin       # optional whole-image .bin
 ```
 
-`-G "MinGW Makefiles"` with `mingw32-make` works as well. A `build/` directory
-that was already configured with another generator has to be deleted first —
-CMake cannot switch generators in place.
+A `build/` directory that was already configured with another generator has to be
+deleted first — CMake cannot switch generators in place. `-G "MinGW Makefiles"`
+with `mingw32-make` is an untested alternative; Ninja is the verified path.
 
 Both must be on PATH in the shell you configure from:
 
@@ -98,7 +99,8 @@ Outputs in `build/`:
 - `iap_data.bin` — section image for `0x1003C000`
 - `iap_codeoption.bin` — section image for `0x1003FFC0`
 
-Run `make bin` to additionally produce `solist_ai_iap_firmware.bin` — a whole-image raw binary covering the IAP load region (`0x1003C000`–`0x1003FFFF`, 16 KB) with 0xFF padding. Useful for inspection or single-file flash tools; not used by `scripts/iap_flash.py`.
+Run `make bin` (or `cmake --build build --target bin`, which works with any
+generator) to additionally produce `solist_ai_iap_firmware.bin` — a whole-image raw binary covering the IAP load region (`0x1003C000`–`0x1003FFFF`, 16 KB) with 0xFF padding. Useful for inspection or single-file flash tools; not used by `scripts/iap_flash.py`.
 
 The whole-image `.hex` is **not** what gets programmed in production — the IAP is split across three non-contiguous flash regions, so the three `.bin` images are flashed at their distinct base addresses via the script below.
 
