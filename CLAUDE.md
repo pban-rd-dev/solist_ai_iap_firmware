@@ -43,8 +43,12 @@ ml63q25x7/Source/   Startup, system init, GCC linker scripts
   GCC/ML63Q25x7_iap.ld   IAP linker script (FLASH/FLASH2/FLASH3/REMAP layout)
 RTE/                Runtime Environment (system init)
 cmake/              arm-none-eabi-toolchain.cmake (auto-loaded by top-level CMakeLists)
+jlink/              SEGGER J-Link device definition + vendor CMSIS flash algorithm
+  JLinkDevices.xml       ML63Q2537 flash bank wired to ML63Q25x7.FLM
+  ML63Q25x7.FLM          Flash algorithm, verbatim from ROHM.ML63Q25x7_DFP 0.4.0
 openocd/            Modular OpenOCD config: interface/ + target/ + top-level cfg
 scripts/
+  jlink_flash.sh      Program the IAP (or any image) via JLinkExe — the fast path
   iap_flash.py        Generate TCL to flash the three IAP bins at their addresses
   hex_to_flash.py     Generate TCL from a full .hex (used for non-IAP test builds)
 tests_iap/          On-target IAP test binary (XMODEM CRC, I/O)
@@ -87,12 +91,55 @@ CPU/compile flags are set centrally in the top-level `CMakeLists.txt` (`-mcpu=co
 
 ## Factory Installation (programming the IAP onto a blank device)
 
-The ML63Q2537 has a custom flash controller (FLASHA/FLASHD/FLASHCON/FLASHACP/FLASHSLF). Do **not** use a stock `openocd program ... verify reset exit` invocation — the chip requires:
+The ML63Q2537 has a custom flash controller (FLASHA/FLASHD/FLASHCON/FLASHACP/FLASHSLF). A stock `openocd program ... verify reset exit` invocation does **not** work — the chip requires:
 1. System clock raised to 48 MHz PLL first.
 2. A specific accept-flag write sequence to unlock self-programming.
 3. WDT clears interleaved with long erase/write operations (WDT is always on).
 
-All of this is implemented as TCL procs in `openocd/target/ml63q2537.cfg`. The supported workflow:
+Two paths implement that sequence. **Use J-Link.**
+
+### J-Link (fast path)
+
+```bash
+scripts/jlink_flash.sh            # programs build/{iap_data,iap_code,iap_codeoption}.bin
+scripts/jlink_flash.sh <build_dir>
+scripts/jlink_flash.sh --file build/solist_ai_iap_firmware_test.hex
+```
+
+The heavy lifting is done by the vendor CMSIS flash algorithm `jlink/ML63Q25x7.FLM`
+(from ROHM.ML63Q25x7_DFP 0.4.0), which J-Link downloads into target RAM and runs
+there. Its `Init()` raises the clock to the 48 MHz PLL, and its erase/program
+loops drive the flash controller and clear the WDT while polling FLASHSTA — the
+same sequence as the OpenOCD TCL, but executing on the Cortex-M0+ instead of one
+SWD round trip per 32-bit word.
+
+`jlink/JLinkDevices.xml` declares the device (the MCU is not in the J-Link
+built-in database): Cortex-M0, work RAM `0x20000000`+16 KB, one flash bank at
+`0x10000000` of 256 KB, `LoaderType="FLASH_ALGO_TYPE_OPEN"`. Flash geometry comes
+from the algorithm's own FlashDevice descriptor: **2 KB erase sectors**, 1 KB
+program pages. `scripts/jlink_flash.sh` points the DLL at that XML with
+`exec JLinkDevicesXMLPath = <repo>/jlink/` — the trailing slash is required, the
+DLL concatenates the path with `JLinkDevices.xml` verbatim.
+
+Because the erase is per 2 KB sector, only `0x1003C000`–`0x1003FFFF` (the IAP
+region proper) is erased. The user region below `0x1003C000` is left intact —
+unlike the OpenOCD path, which erases a whole 32 KB block.
+
+Environment overrides: `JLINK_EXE`, `JLINK_SPEED` (kHz, default 4000),
+`JLINK_SN`, `JLINK_VTREF` (mV, for probes whose VTref pin is not wired),
+`JLINK_NO_RUN=1` (leave the core halted instead of reset-and-run).
+
+Measured on this repo's 4360-byte IAP image (J-Link Lite-Cortex-M V9, SWD
+4000 kHz): the full script — connect, erase, program all three bins, read-back
+verify, reset and run — takes **2.8 s**, against **10.7 s** for the OpenOCD path.
+Most of the J-Link time is fixed connect/prepare overhead; its measured
+program+verify rate is 23–32 KB/s, whereas the OpenOCD path costs one host round
+trip per programmed 32-bit word, so the gap widens with image size.
+
+### OpenOCD (legacy path, kept as fallback)
+
+Implemented as TCL procs in `openocd/target/ml63q2537.cfg`, driving the flash
+controller one word at a time from the host:
 
 ```bash
 # 1. Generate a TCL script that erases the top 32 KB block and writes the three IAP bins
