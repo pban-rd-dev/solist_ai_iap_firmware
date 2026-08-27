@@ -49,6 +49,7 @@ jlink/              SEGGER J-Link device definition + vendor CMSIS flash algorit
 openocd/            Modular OpenOCD config: interface/ + target/ + top-level cfg
 scripts/
   jlink_flash.sh      Program the IAP (or any image) via JLinkExe — the fast path
+  jlink_flash.ps1     Same flow for Windows / JLink.exe (PowerShell 5.1+)
   iap_flash.py        Generate TCL to flash the three IAP bins at their addresses
   hex_to_flash.py     Generate TCL from a full .hex (used for non-IAP test builds)
 tests_iap/          On-target IAP test binary (XMODEM CRC, I/O)
@@ -100,11 +101,28 @@ Two paths implement that sequence. **Use J-Link.**
 
 ### J-Link (fast path)
 
+Linux / macOS:
+
 ```bash
 scripts/jlink_flash.sh            # programs build/{iap_data,iap_code,iap_codeoption}.bin
 scripts/jlink_flash.sh <build_dir>
 scripts/jlink_flash.sh --file build/solist_ai_iap_firmware_test.hex
 ```
+
+Windows (PowerShell):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\jlink_flash.ps1
+powershell -ExecutionPolicy Bypass -File scripts\jlink_flash.ps1 <build_dir>
+powershell -ExecutionPolicy Bypass -File scripts\jlink_flash.ps1 -Image build\solist_ai_iap_firmware_test.hex
+```
+
+Both scripts generate the same J-Link Commander script and honour the same
+`JLINK_*` environment variables. They differ only in how they find the J-Link
+Commander binary — `JLinkExe` on Linux/macOS, `JLink.exe` on Windows (PATH, then
+`%ProgramFiles%\SEGGER\JLink\`, then the versioned `JLink_V*` install dirs).
+`-Address` is the PowerShell spelling of the shell script's positional address
+argument after `--file`.
 
 The heavy lifting is done by the vendor CMSIS flash algorithm `jlink/ML63Q25x7.FLM`
 (from ROHM.ML63Q25x7_DFP 0.4.0), which J-Link downloads into target RAM and runs

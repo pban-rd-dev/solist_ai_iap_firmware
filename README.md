@@ -38,7 +38,8 @@ User-firmware images delivered through the IAP must therefore be linked to start
 
 - `arm-none-eabi-gcc` 10.3+ (tested with 14.3)
 - CMake ≥ 3.16
-- SEGGER J-Link software (`JLinkExe`) and a J-Link probe — the factory flash step
+- SEGGER J-Link software and a J-Link probe — the factory flash step
+  (`JLinkExe` on Linux/macOS, `JLink.exe` on Windows)
 - Python 3 + OpenOCD — only for the legacy OpenOCD flash path
 
 ## Setup (one-time)
@@ -77,10 +78,23 @@ Use this on a blank or to-be-reprovisioned device, before the unit ships.
 
 ### With J-Link (recommended)
 
+Linux / macOS:
+
 ```bash
 scripts/jlink_flash.sh                 # programs build/{iap_data,iap_code,iap_codeoption}.bin
 scripts/jlink_flash.sh <build_dir>     # explicit build directory
 ```
+
+Windows (PowerShell 5.1 or later):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\jlink_flash.ps1
+powershell -ExecutionPolicy Bypass -File scripts\jlink_flash.ps1 <build_dir>
+```
+
+Both emit the same J-Link Commander script and honour the same `JLINK_*`
+environment variables; only the Commander binary differs (`JLinkExe` on
+Linux/macOS, `JLink.exe` on Windows).
 
 The script drives `JLinkExe` with the device definition in `jlink/JLinkDevices.xml`,
 which binds the ML63Q2537 flash bank at `0x10000000` to the vendor CMSIS flash
@@ -109,6 +123,11 @@ Any other image can go through the same path:
 ```bash
 scripts/jlink_flash.sh --file build/solist_ai_iap_firmware_test.hex
 scripts/jlink_flash.sh --file some_image.bin 0x10000000
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\jlink_flash.ps1 -Image build\solist_ai_iap_firmware_test.hex
+powershell -ExecutionPolicy Bypass -File scripts\jlink_flash.ps1 -Image some_image.bin -Address 0x10000000
 ```
 
 ### With OpenOCD (legacy fallback)
@@ -166,6 +185,7 @@ jlink/              J-Link device definition + vendor CMSIS flash algorithm
 openocd/            OpenOCD config split into interface/ + target/ + top-level cfg
 scripts/
   jlink_flash.sh      Program the IAP (or any image) via JLinkExe — recommended
+  jlink_flash.ps1     Same flow for Windows / JLink.exe (PowerShell 5.1+)
   iap_flash.py        Generate TCL to flash the three IAP bins at their addresses
   hex_to_flash.py     Generate TCL from a full .hex (used for non-IAP builds)
 tests_iap/          On-target test binary (build with -DBUILD_IAP_TESTS=ON)
